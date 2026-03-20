@@ -17,6 +17,7 @@ router.post("/signup", async (req: Request, res: Response) => {
       email,
       phone,
       password,
+      role,
     } = req.body;
 
     if (!email || !password) {
@@ -35,13 +36,17 @@ router.post("/signup", async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Determine role from request, defaulting safely to USER
+    const allowedRoles = ["USER", "ADMIN"];
+    const requestedRole = allowedRoles.includes(role) ? role : "USER";
+
     const newUser = await prisma.user.create({
       data: {
         name: name || "",
         email,
         phone: phone || "",
         password: hashedPassword,
-        role: "USER",
+        role: requestedRole,
       },
     });
 
