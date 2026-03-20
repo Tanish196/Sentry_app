@@ -126,15 +126,13 @@ export default function AdminSignup() {
       setSnackbarMessage("Admin account created successfully!");
       setSnackbarVisible(true);
 
-      setTimeout(() => {
-        router.push({
-          pathname: "/(auth)/success",
-          params: {
-            userName: fullName,
-            userRole: "admin",
-          },
-        });
-      }, 1000);
+      router.push({
+        pathname: "/(auth)/success",
+        params: {
+          userName: fullName,
+          userRole: "admin",
+        },
+      });
     } catch (error: any) {
       setSnackbarMessage(error.message || "Signup failed");
       setSnackbarVisible(true);

@@ -27,6 +27,8 @@ const COLORS = {
   border: "#E5E7EB",
 };
 
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
 type Step = "email" | "verification" | "reset-password";
 
 interface PasswordStrength {
@@ -144,12 +146,20 @@ export default function ForgotPassword() {
     setLoading(true);
     setErrors({});
     try {
-      // TODO: Call your API to send reset code
-      // Example: await sendPasswordResetCode(email);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send verification code");
+      }
+      
       setStep("verification");
-    } catch (error) {
-      setErrors({ email: "Failed to send verification code" });
+    } catch (error: any) {
+      setErrors({ email: error.message || "Failed to send verification code" });
       shakeAnimation();
     } finally {
       setLoading(false);
@@ -161,12 +171,20 @@ export default function ForgotPassword() {
     setLoading(true);
     setErrors({});
     try {
-      // TODO: Call your API to verify code
-      // Example: await verifyResetCode(email, verificationCode);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch(`${BACKEND_URL}/auth/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: verificationCode }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Invalid verification code");
+      }
+
       setStep("reset-password");
-    } catch (error) {
-      setErrors({ code: "Invalid verification code. Please try again." });
+    } catch (error: any) {
+      setErrors({ code: error.message || "Invalid verification code. Please try again." });
       shakeAnimation();
     } finally {
       setLoading(false);
@@ -178,12 +196,24 @@ export default function ForgotPassword() {
     setLoading(true);
     setErrors({});
     try {
-      // TODO: Call your API to reset password
-      // Example: await resetPassword(email, newPassword, verificationCode);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email, 
+          code: verificationCode, 
+          newPassword 
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to reset password");
+      }
+
       router.replace("/(auth)/role-selection");
-    } catch (error) {
-      setErrors({ general: "Failed to reset password. Please try again." });
+    } catch (error: any) {
+      setErrors({ general: error.message || "Failed to reset password. Please try again." });
       shakeAnimation();
     } finally {
       setLoading(false);

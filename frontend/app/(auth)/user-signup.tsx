@@ -136,15 +136,13 @@ export default function UserSignup() {
       setSnackbarMessage("Account created successfully!");
       setSnackbarVisible(true);
 
-      setTimeout(() => {
-        router.push({
-          pathname: "/(auth)/success",
-          params: {
-            userName: fullName,
-            userRole: "user",
-          },
-        });
-      }, 1000);
+      router.push({
+        pathname: "/(auth)/success",
+        params: {
+          userName: fullName,
+          userRole: "user",
+        },
+      });
     } catch (error: any) {
       setSnackbarMessage(error.message || "Signup failed");
       setSnackbarVisible(true);

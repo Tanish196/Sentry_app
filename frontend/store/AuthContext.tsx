@@ -51,7 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(true);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/signup`, {
+      const response = await fetch(`${BACKEND_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, phone, password, role }),
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string, rememberMe = false) => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/signin`, {
+      const response = await fetch(`${BACKEND_URL}/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
