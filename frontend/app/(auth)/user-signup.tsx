@@ -3,18 +3,19 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Snackbar, TextInput } from "react-native-paper";
+import { useAuth } from "../../store/AuthContext";
 
 const COLORS = {
   primary: "#1E40AF",
@@ -32,6 +33,7 @@ const COLORS = {
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function UserSignup() {
+  const { signup } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [familyPhone, setFamilyPhone] = useState("");
@@ -128,8 +130,8 @@ export default function UserSignup() {
 
     setLoading(true);
     try {
-      // Simulate signup
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // ✅ Original Backend Logic
+      await signup(fullName, email, familyPhone, password, "USER");
 
       setSnackbarMessage("Account created successfully!");
       setSnackbarVisible(true);

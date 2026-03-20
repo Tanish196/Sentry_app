@@ -3,15 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Checkbox, Snackbar, TextInput } from "react-native-paper";
@@ -33,7 +33,7 @@ const COLORS = {
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function UserLogin() {
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -109,7 +109,15 @@ export default function UserLogin() {
 
     setLoading(true);
     try {
-      await login(email, password, rememberMe);
+      const loggedInUser = await login(email, password, rememberMe);
+      
+      if (loggedInUser.role.name !== "user") {
+        await logout();
+        setSnackbarMessage("Please use the Admin Portal for this account.");
+        setSnackbarVisible(true);
+        return;
+      }
+
       router.replace("/(user-tabs)");
     } catch (error: any) {
       setSnackbarMessage(error.message || "Login failed");

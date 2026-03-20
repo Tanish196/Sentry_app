@@ -33,7 +33,7 @@ const COLORS = {
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function AdminLogin() {
-  const { login } = useAuth();
+  const { login, logout, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -109,7 +109,15 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      await login(email, password, rememberMe);
+      const loggedInUser = await login(email, password, rememberMe);
+      
+      if (loggedInUser.role.name !== "admin") {
+        await logout();
+        setSnackbarMessage("Access denied. This portal is for Administrators only.");
+        setSnackbarVisible(true);
+        return;
+      }
+
       router.replace("/(admin-tabs)");
     } catch (error: any) {
       setSnackbarMessage(error.message || "Login failed");

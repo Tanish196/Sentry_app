@@ -3,15 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Snackbar, TextInput } from "react-native-paper";
@@ -121,7 +121,7 @@ export default function AdminSignup() {
     setLoading(true);
     try {
       // ✅ Original Backend Logic
-      await signup(fullName, email, "", password); // Passing empty string for phone as it's not in this form
+      await signup(fullName, email, "", password, "ADMIN"); // Passing empty string for phone as it's not in this form
 
       setSnackbarMessage("Admin account created successfully!");
       setSnackbarVisible(true);
