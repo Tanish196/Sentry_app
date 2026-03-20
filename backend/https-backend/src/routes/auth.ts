@@ -7,9 +7,7 @@ import type { Request, Response } from "express";
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "123123";
 
-/**
- * SIGNUP
- */
+
 router.post("/signup", async (req: Request, res: Response) => {
   try {
     const {
