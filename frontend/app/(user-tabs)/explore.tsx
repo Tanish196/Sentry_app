@@ -12,15 +12,31 @@ import {
     ScrollView,
     Share,
     StyleSheet,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
-import { Card, Chip, Searchbar, Text } from "react-native-paper";
+import { Text } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
     COLORS,
     FEATURED_DESTINATIONS,
 } from "../../constants/userHomeData";
+
+// Dark theme override for Explore screen
+const THEME = {
+  background: "#0B1326",
+  surfaceContainer: "#171F33",
+  surfaceContainerHigh: "#222A3D",
+  surfaceContainerHighest: "#2D3449",
+  text: "#DAE2FD",
+  textMuted: "#8A9BB8",
+  primary: "#FF385C",
+  secondary: "#62DCA3",
+  accent: "#F59E0B",
+  white: "#FFFFFF",
+  border: "rgba(92, 63, 65, 0.15)",
+};
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -200,13 +216,21 @@ export default function ExploreScreen() {
 
         {/* Search */}
         <View style={styles.searchContainer}>
-          <Searchbar
-            placeholder="Search destinations..."
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchBar}
-            inputStyle={styles.searchInput}
-          />
+          <View style={styles.searchBar}>
+            <MaterialCommunityIcons name="magnify" size={20} color={THEME.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search destinations..."
+              placeholderTextColor={THEME.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <MaterialCommunityIcons name="close-circle" size={18} color={THEME.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Categories */}
@@ -216,32 +240,27 @@ export default function ExploreScreen() {
           contentContainerStyle={styles.categoriesContainer}
         >
           {CATEGORIES.map((category) => (
-            <Chip
+            <TouchableOpacity
               key={category.id}
-              selected={selectedCategory === category.id}
-              onPress={() => setSelectedCategory(category.id)}
               style={[
                 styles.categoryChip,
                 selectedCategory === category.id && styles.categoryChipSelected,
               ]}
-              textStyle={[
+              onPress={() => setSelectedCategory(category.id)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name={category.icon as any}
+                size={15}
+                color={selectedCategory === category.id ? THEME.white : THEME.textMuted}
+              />
+              <Text style={[
                 styles.categoryText,
                 selectedCategory === category.id && styles.categoryTextSelected,
-              ]}
-              icon={() => (
-                <MaterialCommunityIcons
-                  name={category.icon as any}
-                  size={18}
-                  color={
-                    selectedCategory === category.id
-                      ? COLORS.white
-                      : COLORS.textLight
-                  }
-                />
-              )}
-            >
-              {category.label}
-            </Chip>
+              ]}>
+                {category.label}
+              </Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
@@ -252,43 +271,44 @@ export default function ExploreScreen() {
           </Text>
 
           {filteredDestinations.map((dest) => (
-            <Card key={dest.id} style={styles.destinationCard}>
+            <TouchableOpacity key={dest.id} style={styles.destinationCard} onPress={() => handleViewDetails(dest)} activeOpacity={0.88}>
               <View style={styles.cardContent}>
                 <Image source={{ uri: dest.image }} style={styles.cardImage} />
+                <LinearGradient colors={["transparent", "rgba(11,19,38,0.95)"]} style={styles.cardImageOverlay} />
                 <View style={styles.cardInfo}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{dest.name}</Text>
+                    <View style={styles.categoryPill}>
+                      <Text style={styles.categoryPillText}>{dest.category}</Text>
+                    </View>
                   </View>
                   <View style={styles.locationRow}>
                     <MaterialCommunityIcons
                       name="map-marker"
-                      size={14}
-                      color={COLORS.textLight}
+                      size={13}
+                      color={THEME.textMuted}
                     />
                     <Text style={styles.locationText}>{dest.location}</Text>
                   </View>
                   <View style={styles.ratingRow}>
                     <MaterialCommunityIcons
                       name="star"
-                      size={16}
+                      size={14}
                       color="#FFD700"
                     />
                     <Text style={styles.ratingText}>{dest.rating}</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.viewButton}
-                    onPress={() => handleViewDetails(dest)}
-                  >
+                  <View style={styles.viewButton}>
                     <Text style={styles.viewButtonText}>View Details</Text>
                     <MaterialCommunityIcons
-                      name="chevron-right"
-                      size={18}
-                      color={COLORS.primary}
+                      name="arrow-right"
+                      size={16}
+                      color={THEME.primary}
                     />
-                  </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </Card>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
@@ -309,7 +329,7 @@ export default function ExploreScreen() {
                   style={styles.heroImage}
                 />
                 <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.8)"]}
+                  colors={["transparent", "rgba(11,19,38,0.9)"]}
                   style={styles.heroOverlay}
                 >
                   <View style={styles.heroContent}>
@@ -320,7 +340,7 @@ export default function ExploreScreen() {
                     </View>
                     <Text style={styles.heroTitle}>{selectedDestination.name}</Text>
                     <View style={styles.heroMeta}>
-                      <MaterialCommunityIcons name="map-marker" size={16} color={COLORS.white} />
+                      <MaterialCommunityIcons name="map-marker" size={16} color={THEME.white} />
                       <Text style={styles.heroLocation}>{selectedDestination.location}</Text>
                     </View>
                     <View style={styles.heroRating}>
@@ -338,7 +358,7 @@ export default function ExploreScreen() {
                   style={styles.backButton}
                   onPress={() => setShowDetails(false)}
                 >
-                  <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
+                  <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.white} />
                 </TouchableOpacity>
 
                 {/* Action Buttons */}
@@ -350,11 +370,11 @@ export default function ExploreScreen() {
                     <MaterialCommunityIcons
                       name={isSaved[selectedDestination.id] ? "heart" : "heart-outline"}
                       size={22}
-                      color={isSaved[selectedDestination.id] ? COLORS.error : COLORS.white}
+                      color={isSaved[selectedDestination.id] ? THEME.primary : THEME.white}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.actionIcon} onPress={handleShare}>
-                    <MaterialCommunityIcons name="share-variant" size={22} color={COLORS.white} />
+                    <MaterialCommunityIcons name="share-variant" size={22} color={THEME.white} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -382,19 +402,19 @@ export default function ExploreScreen() {
               {/* Quick Info Cards */}
               <View style={styles.quickInfoContainer}>
                 <View style={styles.quickInfoCard}>
-                  <MaterialCommunityIcons name="clock-outline" size={24} color={COLORS.primary} />
+                  <MaterialCommunityIcons name="clock-outline" size={24} color={THEME.primary} />
                   <Text style={styles.quickInfoLabel}>Duration</Text>
                   <Text style={styles.quickInfoValue}>{getDetails(selectedDestination.id).duration}</Text>
                 </View>
                 <View style={styles.quickInfoCard}>
-                  <MaterialCommunityIcons name="currency-inr" size={24} color={COLORS.primary} />
+                  <MaterialCommunityIcons name="currency-inr" size={24} color={THEME.primary} />
                   <Text style={styles.quickInfoLabel}>Entry Fee</Text>
                   <Text style={styles.quickInfoValue} numberOfLines={2}>
                     {getDetails(selectedDestination.id).entryFee.split(",")[0]}
                   </Text>
                 </View>
                 <View style={styles.quickInfoCard}>
-                  <MaterialCommunityIcons name="calendar-check" size={24} color={COLORS.primary} />
+                  <MaterialCommunityIcons name="calendar-check" size={24} color={THEME.primary} />
                   <Text style={styles.quickInfoLabel}>Best Time</Text>
                   <Text style={styles.quickInfoValue} numberOfLines={2}>
                     {getDetails(selectedDestination.id).bestTime}
@@ -413,7 +433,7 @@ export default function ExploreScreen() {
               {/* Opening Hours */}
               <View style={styles.detailSection}>
                 <View style={styles.infoRow}>
-                  <MaterialCommunityIcons name="clock-outline" size={20} color={COLORS.primary} />
+                  <MaterialCommunityIcons name="clock-outline" size={20} color={THEME.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Opening Hours</Text>
                     <Text style={styles.infoValue}>
@@ -429,7 +449,7 @@ export default function ExploreScreen() {
                 <View style={styles.highlightsContainer}>
                   {getDetails(selectedDestination.id).highlights.map((highlight, index) => (
                     <View key={index} style={styles.highlightChip}>
-                      <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.primary} />
+                      <MaterialCommunityIcons name="check-circle" size={16} color={THEME.primary} />
                       <Text style={styles.highlightText}>{highlight}</Text>
                     </View>
                   ))}
@@ -443,7 +463,7 @@ export default function ExploreScreen() {
                   {getDetails(selectedDestination.id).howToReach}
                 </Text>
                 <TouchableOpacity style={styles.directionsButton} onPress={handleOpenMaps}>
-                  <MaterialCommunityIcons name="google-maps" size={20} color={COLORS.white} />
+                  <MaterialCommunityIcons name="google-maps" size={20} color={THEME.white} />
                   <Text style={styles.directionsButtonText}>Open in Google Maps</Text>
                 </TouchableOpacity>
               </View>
@@ -453,7 +473,7 @@ export default function ExploreScreen() {
                 <Text style={styles.sectionHeader}>Travel Tips</Text>
                 {getDetails(selectedDestination.id).tips.map((tip, index) => (
                   <View key={index} style={styles.tipItem}>
-                    <MaterialCommunityIcons name="lightbulb-outline" size={18} color={COLORS.accent} />
+                    <MaterialCommunityIcons name="lightbulb-outline" size={18} color={THEME.accent} />
                     <Text style={styles.tipText}>{tip}</Text>
                   </View>
                 ))}
@@ -509,34 +529,45 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.background,
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 20,
     paddingBottom: 8,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: COLORS.text,
+    fontSize: 30,
+    fontWeight: "800",
+    color: THEME.text,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
     marginTop: 4,
+    fontWeight: "500",
   },
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
   searchBar: {
-    borderRadius: 16,
-    elevation: 2,
-    backgroundColor: COLORS.white,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: THEME.surfaceContainerHigh,
+    borderRadius: 50,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    gap: 8,
   },
   searchInput: {
+    flex: 1,
     fontSize: 14,
+    color: THEME.text,
+    fontWeight: "500",
   },
   categoriesContainer: {
     paddingHorizontal: 20,
@@ -544,59 +575,98 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryChip: {
-    backgroundColor: COLORS.white,
-    marginRight: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: THEME.surfaceContainerHigh,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 50,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   categoryChipSelected: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: THEME.primary,
+    borderColor: THEME.primary,
   },
   categoryText: {
-    color: COLORS.textLight,
+    color: THEME.textMuted,
     fontSize: 13,
+    fontWeight: "600",
   },
   categoryTextSelected: {
-    color: COLORS.white,
+    color: THEME.white,
+    fontWeight: "700",
   },
   destinationsContainer: {
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginBottom: 16,
+    fontSize: 13,
+    color: THEME.textMuted,
+    marginBottom: 14,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   destinationCard: {
-    marginBottom: 16,
-    borderRadius: 16,
-    elevation: 2,
-    backgroundColor: COLORS.white,
+    marginBottom: 14,
+    borderRadius: 18,
+    backgroundColor: THEME.surfaceContainer,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   cardContent: {
     flexDirection: "row",
+    position: "relative",
   },
   cardImage: {
-    width: 120,
-    height: 140,
+    width: 110,
+    height: 130,
+  },
+  cardImageOverlay: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: 110,
+    height: 130,
   },
   cardInfo: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     justifyContent: "space-between",
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    gap: 8,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "800",
+    color: THEME.text,
     flex: 1,
+    letterSpacing: -0.2,
+  },
+  categoryPill: {
+    backgroundColor: `${THEME.primary}18`,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: `${THEME.primary}30`,
+  },
+  categoryPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: THEME.primary,
+    letterSpacing: 0.3,
   },
   priceTag: {
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: `${THEME.primary}15`,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -604,44 +674,49 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 12,
     fontWeight: "600",
-    color: COLORS.primary,
+    color: THEME.primary,
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
+    marginTop: 2,
   },
   locationText: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
+    fontWeight: "500",
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    marginTop: 2,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "700",
+    color: THEME.text,
   },
   reviewsText: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
   },
   viewButton: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
+    marginTop: 4,
   },
   viewButtonText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.primary,
+    fontWeight: "700",
+    color: THEME.primary,
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.background,
   },
   heroContainer: {
     height: 300,
@@ -656,7 +731,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: "60%",
+    height: "70%",
     justifyContent: "flex-end",
     padding: 20,
   },
@@ -664,21 +739,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryBadge: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: THEME.primary,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 50,
     alignSelf: "flex-start",
   },
   categoryBadgeText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: "600",
+    color: THEME.white,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   heroTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: COLORS.white,
+    fontSize: 28,
+    fontWeight: "800",
+    color: THEME.white,
+    letterSpacing: -0.4,
   },
   heroMeta: {
     flexDirection: "row",
@@ -686,8 +764,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   heroLocation: {
-    color: COLORS.white,
+    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
+    fontWeight: "500",
   },
   heroRating: {
     flexDirection: "row",
@@ -695,12 +774,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   heroRatingText: {
-    color: COLORS.white,
+    color: THEME.white,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   heroReviewCount: {
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.6)",
     fontSize: 14,
   },
   backButton: {
@@ -710,34 +789,39 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(11,19,38,0.6)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   heroActions: {
     position: "absolute",
     top: 16,
     right: 16,
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   actionIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(11,19,38,0.6)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   photoGallerySection: {
     paddingVertical: 16,
   },
   galleryHeader: {
     fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.text,
+    fontWeight: "800",
+    color: THEME.text,
     paddingHorizontal: 20,
     marginBottom: 12,
+    letterSpacing: -0.3,
   },
   photoGallery: {
     paddingHorizontal: 16,
@@ -746,7 +830,7 @@ const styles = StyleSheet.create({
   galleryImage: {
     width: SCREEN_WIDTH * 0.7,
     height: 200,
-    borderRadius: 12,
+    borderRadius: 16,
     marginHorizontal: 4,
   },
   quickInfoContainer: {
@@ -756,25 +840,25 @@ const styles = StyleSheet.create({
   },
   quickInfoCard: {
     flex: 1,
-    backgroundColor: COLORS.white,
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: THEME.surfaceContainer,
+    padding: 14,
+    borderRadius: 16,
     alignItems: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   quickInfoLabel: {
     fontSize: 11,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
     marginTop: 6,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   quickInfoValue: {
     fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.text,
+    fontWeight: "700",
+    color: THEME.text,
     textAlign: "center",
     marginTop: 2,
   },
@@ -782,13 +866,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: THEME.border,
   },
   sectionHeader: {
     fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.text,
+    fontWeight: "800",
+    color: THEME.text,
     marginBottom: 12,
+    letterSpacing: -0.3,
   },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -799,7 +884,8 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 14,
     lineHeight: 22,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
+    fontWeight: "500",
   },
   infoRow: {
     flexDirection: "row",
@@ -811,12 +897,15 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: "500",
-    color: COLORS.text,
+    fontWeight: "600",
+    color: THEME.text,
     marginTop: 2,
   },
   highlightsContainer: {
@@ -828,15 +917,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: `${THEME.primary}12`,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: `${THEME.primary}20`,
   },
   highlightText: {
     fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: "500",
+    color: THEME.primary,
+    fontWeight: "600",
   },
   directionsButton: {
     flexDirection: "row",
@@ -844,13 +935,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#4285F4",
-    padding: 12,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 50,
     marginTop: 12,
   },
   directionsButtonText: {
-    color: COLORS.white,
-    fontWeight: "600",
+    color: THEME.white,
+    fontWeight: "700",
     fontSize: 14,
   },
   tipItem: {
@@ -862,8 +953,9 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
     lineHeight: 20,
+    fontWeight: "500",
   },
   overallRating: {
     flexDirection: "row",
@@ -872,19 +964,16 @@ const styles = StyleSheet.create({
   },
   overallRatingText: {
     fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.text,
+    fontWeight: "800",
+    color: THEME.text,
   },
   reviewCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.surfaceContainer,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 10,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   reviewHeader: {
     flexDirection: "row",
@@ -901,23 +990,24 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.primary,
+    backgroundColor: THEME.primary,
     justifyContent: "center",
     alignItems: "center",
   },
   reviewerInitial: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "600",
+    color: THEME.white,
+    fontSize: 15,
+    fontWeight: "700",
   },
   reviewerName: {
     fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text,
+    fontWeight: "700",
+    color: THEME.text,
   },
   reviewDate: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
+    fontWeight: "500",
   },
   reviewRating: {
     flexDirection: "row",
@@ -925,7 +1015,8 @@ const styles = StyleSheet.create({
   },
   reviewComment: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: THEME.textMuted,
     lineHeight: 20,
+    fontWeight: "500",
   },
 });

@@ -24,7 +24,6 @@ interface QuickActionsProps {
 const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
   const [helplineModalVisible, setHelplineModalVisible] = useState(false);
 
-  // ✅ Updated: Direct call (no double confirmation)
   const handleEmergencyCall = useCallback(async (action: QuickAction) => {
     if (!action.phoneNumber) return;
 
@@ -36,7 +35,6 @@ const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
       );
       await Linking.openURL(phoneNumber);
     } catch (error) {
-      // Only show alert if opening the dialer actually fails
       Alert.alert(
         "Unable to Open Dialer",
         `Please dial ${action.phoneNumber} manually.`,
@@ -45,7 +43,6 @@ const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
     }
   }, []);
 
-  // ✅ Keep Map Redirection
   const handleFindNearest = useCallback((action: QuickAction) => {
     if (!action.mapFilter) return;
 
@@ -91,14 +88,20 @@ const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
 
   return (
     <>
-      <View style={styles.quickActions}>
-        {actions.map((action) => (
-          <QuickActionButton
-            key={action.id}
-            action={action}
-            onPress={() => handleActionPress(action)}
-          />
-        ))}
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionSubtitle}>Emergency services</Text>
+        </View>
+        <View style={styles.quickActions}>
+          {actions.map((action) => (
+            <QuickActionButton
+              key={action.id}
+              action={action}
+              onPress={() => handleActionPress(action)}
+            />
+          ))}
+        </View>
       </View>
 
       <HelplineModal
@@ -122,7 +125,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.92,
+      toValue: 0.9,
       useNativeDriver: true,
       speed: 50,
       bounciness: 4,
@@ -148,15 +151,28 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     >
       <Animated.View
         style={[
-          styles.quickActionIcon,
-          { backgroundColor: `${action.color}15` },
+          styles.quickActionIconWrap,
           { transform: [{ scale: scaleAnim }] },
         ]}
       >
-        <MaterialCommunityIcons
-          name={action.icon as any}
-          size={28}
-          color={action.color}
+        <View
+          style={[
+            styles.quickActionIcon,
+            { backgroundColor: `${action.color}20` },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={action.icon as any}
+            size={26}
+            color={action.color}
+          />
+        </View>
+        {/* Colored accent ring */}
+        <View
+          style={[
+            styles.accentRing,
+            { borderColor: `${action.color}40` },
+          ]}
         />
       </Animated.View>
       <Text style={styles.quickActionLabel}>{action.label}</Text>
@@ -165,28 +181,65 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 20,
+    marginBottom: 28,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+    letterSpacing: -0.3,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
   quickActions: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
   },
   quickActionItem: {
     alignItems: "center",
     width: (SCREEN_WIDTH - 80) / 4,
   },
+  quickActionIconWrap: {
+    position: "relative",
+    marginBottom: 10,
+  },
   quickActionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
+    width: 62,
+    height: 62,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  accentRing: {
+    position: "absolute",
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 23,
+    borderWidth: 1.5,
   },
   quickActionLabel: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.text,
     textAlign: "center",
+    letterSpacing: 0.2,
   },
 });
 

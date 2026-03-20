@@ -1,15 +1,34 @@
 export const COLORS = {
-  primary: "#10B981",
-  secondary: "#0EA5E9",
-  accent: "#F59E0B",
-  error: "#EF4444",
-  background: "#F0FDF4",
-  surface: "#FFFFFF",
-  text: "#1F2937",
-  textLight: "#6B7280",
-  white: "#FFFFFF",
-  gradientStart: "#10B981",
-  gradientEnd: "#059669",
+  // Primary Palette - Airbnb-inspired Deep Navy + Coral
+  primary: "#FF385C",           // Coral/Airbnb Red - main accent
+  primaryDim: "#FFB2B6",        // Soft coral for secondary use
+  primaryContainer: "#FF5169",  // Slightly lighter coral for CTAs
+  secondary: "#62DCA3",         // Safety Green - "All Clear" signal
+  accent: "#F59E0B",            // Warm amber for ratings/warnings
+  error: "#FF4444",             // Error/danger red
+
+  // Surface Hierarchy (Dark Navy Theme)
+  background: "#0B1326",        // Level 0 - Deep navy base canvas
+  surface: "#0B1326",           // Same as background
+  surfaceContainerLow: "#131B2E", // Level 1 - Section grouping
+  surfaceContainer: "#171F33",  // Container base
+  surfaceContainerHigh: "#222A3D", // Level 2 - Nav bars, active surfaces
+  surfaceContainerHighest: "#2D3449", // Level 3 - Priority cards
+  surfaceBright: "#31394D",     // Glassmorphism elements
+
+  // Text Colors
+  text: "#DAE2FD",              // Primary text (on dark backgrounds)
+  textLight: "#E5BDBE",         // Secondary/subtitle text
+  textMuted: "#8A9BB8",         // Muted text, placeholders
+  white: "#FFFFFF",             // Pure white for high-contrast cards
+
+  // Borders & Outlines
+  border: "rgba(92, 63, 65, 0.15)", // Ghost border (outline_variant @ 15%)
+  divider: "rgba(92, 63, 65, 0.08)", // Subtle divider
+
+  // Legacy compatibility
+  gradientStart: "#FF385C",
+  gradientEnd: "#FF5169",
 };
 
 export const FEATURED_DESTINATIONS = [
@@ -234,7 +253,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "1",
     icon: "hospital-building",
     label: "Hospital",
-    color: "#EF4444",
+    color: "#FF385C",
     type: "call",
     phoneNumber: "102",
     serviceName: "Ambulance Service",
@@ -244,7 +263,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "2",
     icon: "police-badge",
     label: "Police",
-    color: "#3B82F6",
+    color: "#4F8EF7",
     type: "call",
     phoneNumber: "100",
     serviceName: "Police Emergency",
@@ -263,7 +282,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "4",
     icon: "phone",
     label: "Helpline",
-    color: "#10B981",
+    color: "#62DCA3",
     type: "helpline",
   },
 ];

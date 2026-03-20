@@ -50,7 +50,6 @@ export default function UserHomeScreen() {
     router.replace("/(auth)/user-login");
   };
 
-  // Filter destinations based on search query
   const filteredDestinations = FEATURED_DESTINATIONS.filter((dest) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -62,12 +61,12 @@ export default function UserHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar
-        style="dark"
-        backgroundColor={COLORS.background}
-        translucent={false}
-      />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <StatusBar style="light" backgroundColor={COLORS.background} translucent={false} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         <UserHeader
           user={user}
           searchQuery={searchQuery}
@@ -105,8 +104,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
   content: {
-    paddingTop: 20,
+    paddingTop: 28,
   },
   noResultsContainer: {
     paddingHorizontal: 20,
@@ -114,8 +119,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   noResultsText: {
-    fontSize: 16,
-    color: COLORS.textLight,
+    fontSize: 15,
+    color: COLORS.textMuted,
     textAlign: "center",
+    fontWeight: "500",
   },
 });

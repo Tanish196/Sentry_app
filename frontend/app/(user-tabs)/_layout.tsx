@@ -3,16 +3,15 @@ import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 const COLORS = {
-  primary: "#10B981", // Green for user/tourist theme
-  accent: "#0EA5E9",
-  error: "#FF6B6B",
-  warning: "#F59E0B",
-  success: "#10B981",
-  background: "#F8FAFC",
-  text: "#1F2937",
-  textLight: "#6B7280",
-  border: "#E5E7EB",
+  primary: "#FF385C",
+  background: "#0B1326",
+  surfaceContainerHigh: "#222A3D",
+  surfaceBright: "#31394D",
+  text: "#DAE2FD",
+  textMuted: "#8A9BB8",
   white: "#FFFFFF",
+  border: "rgba(92, 63, 65, 0.2)",
+  error: "#FF385C",
 };
 
 export default function UserTabsLayout() {
@@ -21,27 +20,28 @@ export default function UserTabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textLight,
+        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.white,
+          backgroundColor: COLORS.surfaceContainerHigh,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          elevation: 8,
+          elevation: 24,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          height: 70,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 16,
+          height: 72,
           paddingBottom: 10,
-          paddingTop: 10,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
+          fontSize: 10,
+          fontWeight: "700",
+          letterSpacing: 0.5,
           marginTop: 2,
         },
         tabBarIconStyle: {
-          marginBottom: -4,
+          marginBottom: -2,
         },
       }}
     >
@@ -53,12 +53,12 @@ export default function UserTabsLayout() {
             <View
               style={[
                 styles.iconContainer,
-                focused && { backgroundColor: `${COLORS.primary}15` },
+                focused && { backgroundColor: `${COLORS.primary}20` },
               ]}
             >
               <MaterialCommunityIcons
                 name={focused ? "home" : "home-outline"}
-                size={24}
+                size={22}
                 color={color}
               />
             </View>
@@ -74,12 +74,12 @@ export default function UserTabsLayout() {
             <View
               style={[
                 styles.iconContainer,
-                focused && { backgroundColor: `${COLORS.accent}15` },
+                focused && { backgroundColor: `${COLORS.primary}20` },
               ]}
             >
               <MaterialCommunityIcons
                 name={focused ? "compass" : "compass-outline"}
-                size={24}
+                size={22}
                 color={color}
               />
             </View>
@@ -95,16 +95,22 @@ export default function UserTabsLayout() {
             <View
               style={[
                 styles.sosButton,
-                focused && { backgroundColor: COLORS.error },
+                focused && { backgroundColor: "#CC0033", transform: [{ scale: 1.05 }] },
               ]}
             >
               <MaterialCommunityIcons
                 name="shield-alert"
-                size={28}
-                color={focused ? COLORS.white : COLORS.error}
+                size={26}
+                color={COLORS.white}
               />
             </View>
           ),
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: "800",
+            color: COLORS.primary,
+            letterSpacing: 0.5,
+          },
         }}
       />
 
@@ -116,12 +122,12 @@ export default function UserTabsLayout() {
             <View
               style={[
                 styles.iconContainer,
-                focused && { backgroundColor: `${COLORS.warning}15` },
+                focused && { backgroundColor: `${COLORS.primary}20` },
               ]}
             >
               <MaterialCommunityIcons
                 name={focused ? "map" : "map-outline"}
-                size={24}
+                size={22}
                 color={color}
               />
             </View>
@@ -137,12 +143,12 @@ export default function UserTabsLayout() {
             <View
               style={[
                 styles.iconContainer,
-                focused && { backgroundColor: `${COLORS.primary}15` },
+                focused && { backgroundColor: `${COLORS.primary}20` },
               ]}
             >
               <MaterialCommunityIcons
                 name={focused ? "account-circle" : "account-circle-outline"}
-                size={24}
+                size={22}
                 color={color}
               />
             </View>
@@ -157,24 +163,24 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: "center",
     justifyContent: "center",
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   sosButton: {
     alignItems: "center",
     justifyContent: "center",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#FEE2E2",
-    marginTop: -20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FF385C",
+    marginTop: -22,
     borderWidth: 3,
-    borderColor: COLORS.white,
-    shadowColor: COLORS.error,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderColor: "#222A3D",
+    shadowColor: "#FF385C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 16,
   },
 });
