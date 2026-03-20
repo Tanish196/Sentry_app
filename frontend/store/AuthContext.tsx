@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AuthContextType, Permission, ROLES, User } from "../types/rbac";
 
+const BACKEND_URL = "https://sentry-app.onrender.com";
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
@@ -10,25 +12,8 @@ const STORAGE_KEYS = {
   REMEMBER_ME: "@sentryapp:remember_me",
 };
 
-// Mock user data - replace with actual API calls
-const MOCK_USERS: User[] = [
-  {
-    id: "1",
-    email: "admin@gmail.com",
-    name: "John Administrator",
-    role: ROLES[0], // admin
-    avatar: "https://avatar.iran.liara.run/public/1",
-    department: "IT",
-  },
-  {
-    id: "2",
-    email: "user@gmail.com",
-    name: "Mike User",
-    role: ROLES[1], // user
-    avatar: "https://avatar.iran.liara.run/public/3",
-    department: "Sales",
-  },
-];
+
+
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -65,40 +50,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = async (email: string, password: string, rememberMe = false) => {
+  const signup = async (name: string, email: string, phone: string, password: string) => {
     setLoading(true);
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch(`${BACKEND_URL}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, password }),
+      });
 
-      // Mock authentication logic
-      const foundUser = MOCK_USERS.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase(),
-      );
+      const data = await response.json();
 
-      if (!foundUser || password !== "password123") {
-        throw new Error("Invalid email or password");
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to create account");
       }
 
-      // Generate mock token
-      const token = `mock_token_${foundUser.id}_${Date.now()}`;
+      // Optionally auto-login the user into the app right after signing up
+      const userRoleStr = data.user.role.toLowerCase();
+      const frontendRoleObj = ROLES.find((r) => r.name === userRoleStr) || ROLES[1];
 
-      // Always save to storage to persist login state
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(foundUser));
-      await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      const authenticatedUser: User = {
+        id: data.user.id.toString(),
+        email: data.user.email,
+        name: data.user.name,
+        role: frontendRoleObj,
+      };
 
-      if (rememberMe) {
-        await AsyncStorage.setItem(STORAGE_KEYS.REMEMBER_ME, "true");
-      }
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authenticatedUser));
+      await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
 
-      setUser(foundUser);
+      setUser(authenticatedUser);
     } catch (error) {
       throw error;
     } finally {
       setLoading(false);
     }
   };
+  // const login = async () = > {
+
+  // }
 
   const logout = async () => {
     try {
@@ -142,7 +133,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!user,
     role: user?.role.name || null,
     loading,
-    login,
+    // login,
+    signup,
     logout,
     hasPermission,
     hasRole,
