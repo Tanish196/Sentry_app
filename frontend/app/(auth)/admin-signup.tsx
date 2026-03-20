@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Snackbar, TextInput } from "react-native-paper";
+import { useAuth } from "../../store/AuthContext";
 
 const COLORS = {
   primary: "#1E40AF",
@@ -32,6 +33,7 @@ const COLORS = {
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function AdminSignup() {
+  const { signup } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -118,8 +120,8 @@ export default function AdminSignup() {
 
     setLoading(true);
     try {
-      // Simulate signup
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // ✅ Original Backend Logic
+      await signup(fullName, email, "", password); // Passing empty string for phone as it's not in this form
 
       setSnackbarMessage("Admin account created successfully!");
       setSnackbarVisible(true);

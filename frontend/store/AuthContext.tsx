@@ -87,9 +87,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(false);
     }
   };
-  // const login = async () = > {
+  const login = async (email: string, password: string, rememberMe = false) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-  // }
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Invalid email or password");
+      }
+
+      const userRoleStr = data.user.role.toLowerCase();
+      const frontendRoleObj = ROLES.find((r) => r.name === userRoleStr) || ROLES[1];
+
+      const authenticatedUser: User = {
+        id: data.user.id.toString(),
+        email: data.user.email,
+        name: data.user.name,
+        role: frontendRoleObj,
+      };
+
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authenticatedUser));
+      await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
+
+      if (rememberMe) {
+        await AsyncStorage.setItem(STORAGE_KEYS.REMEMBER_ME, "true");
+      }
+
+      setUser(authenticatedUser);
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = async () => {
     try {
@@ -133,7 +168,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!user,
     role: user?.role.name || null,
     loading,
-    // login,
+    login,
     signup,
     logout,
     hasPermission,
