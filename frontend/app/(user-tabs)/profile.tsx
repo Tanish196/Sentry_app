@@ -2,9 +2,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React from "react";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -93,7 +95,7 @@ const SETTINGS_ITEMS = [
 ];
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
@@ -131,25 +133,7 @@ export default function ProfileScreen() {
 
           {/* Avatar Section */}
           <View style={styles.profileSection}>
-            <View style={styles.avatarWrapper}>
-              {user?.avatar ? (
-                <Avatar.Image
-                  size={88}
-                  source={{ uri: user.avatar }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <Avatar.Text
-                  size={88}
-                  label={user?.name ? user.name.charAt(0).toUpperCase() : "G"}
-                  style={[styles.avatar, { backgroundColor: COLORS.primary }]}
-                  color={COLORS.white}
-                />
-              )}
-              <TouchableOpacity style={styles.editAvatarBtn}>
-                <MaterialCommunityIcons name="camera" size={14} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
+            <ProfilePhotoPicker user={user} updateUser={updateUser} />
             <Text style={styles.userName}>{user?.name || "Guest User"}</Text>
           </View>
         </LinearGradient>
@@ -255,6 +239,70 @@ export default function ProfileScreen() {
     </View>
   );
 }
+
+// ------------------------------------------------------------------
+// Dedicated Photo Picker Component
+// ------------------------------------------------------------------
+const ProfilePhotoPicker = ({ user, updateUser }: { user: any, updateUser: any }) => {
+  const pickImage = async () => {
+    // 1. Request Media Library Permissions built into the Phone OS
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          "Permission Required", 
+          "We need camera roll permissions to let you choose a profile picture!"
+        );
+        return;
+      }
+    }
+
+    // 2. Launch the Phone Photo Library
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false, // Skip buggy crop screen to avoid invisible 'save' buttons
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      // 3. Update the Image
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const localUri = result.assets[0].uri;
+        updateUser({ avatar: localUri });
+      }
+    } catch (error) {
+      console.error("ImagePicker Error: ", error);
+      Alert.alert("Error", "Something went wrong opening the photo library.");
+    }
+  };
+
+  return (
+    <View style={styles.avatarWrapper}>
+      {user?.avatar ? (
+        <Avatar.Image
+          size={88}
+          source={{ uri: user.avatar }}
+          style={styles.avatar}
+        />
+      ) : (
+        <Avatar.Text
+          size={88}
+          label={user?.name ? user.name.charAt(0).toUpperCase() : "G"}
+          style={[styles.avatar, { backgroundColor: COLORS.primary }]}
+          color={COLORS.white}
+        />
+      )}
+      <TouchableOpacity 
+        style={styles.editAvatarBtn} 
+        onPress={pickImage} 
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="camera" size={14} color={COLORS.white} />
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

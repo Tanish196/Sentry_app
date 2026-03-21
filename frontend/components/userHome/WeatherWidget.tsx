@@ -91,8 +91,8 @@ const WeatherWidget: React.FC = () => {
         <View style={styles.weatherLeft}>
           <View style={[styles.weatherIconBg, { backgroundColor: `${iconColor}20` }]}>
             {(() => {
-              const Icon = (LucideIcons as any)[weather.icon];
-              return Icon ? <Icon size={36} color={iconColor} strokeWidth={2} /> : null;
+              const Icon = (LucideIcons as any)[weather.icon] || LucideIcons.Cloud;
+              return <Icon size={36} color={iconColor} strokeWidth={2} />;
             })()}
           </View>
           <View style={styles.tempInfo}>
