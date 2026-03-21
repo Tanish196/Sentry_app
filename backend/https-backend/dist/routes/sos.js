@@ -10,9 +10,16 @@ const emailQueue = new Queue("emailQueue", { connection: redis });
 router.post("/", async (req, res) => {
     try {
         const { userId, message } = req.body;
-        if (!userId)
+        console.log("[SOS][CREATE] Request received", {
+            userId,
+            hasMessage: Boolean(message),
+        });
+        if (!userId) {
+            console.warn("[SOS][CREATE] Missing userId");
             return res.status(400).json({ message: "userId required" });
+        }
         const contacts = await prisma.emergencyContact.findMany({ where: { userId } });
+        console.log("[SOS][CREATE] Contacts fetched", { userId, count: contacts.length });
         let enqueued = 0;
         for (const c of contacts) {
             const to = c.email;
@@ -39,12 +46,14 @@ router.post("/", async (req, res) => {
             enqueued++;
         }
         if (enqueued === 0) {
+            console.warn("[SOS][CREATE] No contact email available", { userId });
             return res.status(404).json({ message: "No emergency contact email found" });
         }
+        console.log("[SOS][CREATE] SOS notifications enqueued", { userId, enqueued });
         return res.json({ message: "SOS enqueued", enqueued });
     }
     catch (err) {
-        console.error(err);
+        console.error("[SOS][CREATE] Unexpected error", err);
         return res.status(500).json({ message: "Internal server error" });
     }
 });
