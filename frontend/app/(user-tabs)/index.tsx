@@ -92,16 +92,16 @@ export default function UserHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white, // Pure white for a cleaner look
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 40,
   },
   content: {
-    paddingTop: 28,
+    paddingTop: 0,
   },
   noResultsContainer: {
     paddingHorizontal: 20,

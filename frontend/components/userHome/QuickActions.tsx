@@ -90,12 +90,13 @@ const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
     <>
       <View style={styles.container}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <Text style={styles.sectionSubtitle}>Emergency services</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Emergency Services</Text>
+          </View>
         </View>
-        <View style={styles.quickActions}>
+        <View style={styles.quickActionsGrid}>
           {actions.map((action) => (
-            <QuickActionButton
+            <QuickActionCard
               key={action.id}
               action={action}
               onPress={() => handleActionPress(action)}
@@ -112,12 +113,12 @@ const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
   );
 };
 
-interface QuickActionButtonProps {
+interface QuickActionCardProps {
   action: QuickAction;
   onPress: () => void;
 }
 
-const QuickActionButton: React.FC<QuickActionButtonProps> = ({
+const QuickActionCard: React.FC<QuickActionCardProps> = ({
   action,
   onPress,
 }) => {
@@ -125,10 +126,8 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.9,
+      toValue: 0.95,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
     }).start();
   };
 
@@ -136,10 +135,10 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
     }).start();
   };
+
+  const Icon = (LucideIcons as any)[action.icon];
 
   return (
     <TouchableOpacity
@@ -147,36 +146,24 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={styles.quickActionItem}
+      style={styles.cardWrapper}
     >
       <Animated.View
         style={[
-          styles.quickActionIconWrap,
+          styles.card,
           { transform: [{ scale: scaleAnim }] },
         ]}
       >
         <View
           style={[
-            styles.quickActionIcon,
-            { backgroundColor: `${action.color}20` },
+            styles.iconContainer,
+            { backgroundColor: `${action.color}15` },
           ]}
         >
-          {(() => {
-            const Icon = (LucideIcons as any)[action.icon];
-            return Icon ? (
-              <Icon size={26} color={action.color} strokeWidth={2} />
-            ) : null;
-          })()}
+          {Icon && <Icon size={24} color={action.color} strokeWidth={2.5} />}
         </View>
-        {/* Colored accent ring */}
-        <View
-          style={[
-            styles.accentRing,
-            { borderColor: `${action.color}40` },
-          ]}
-        />
+        <Text style={styles.cardLabel}>{action.label}</Text>
       </Animated.View>
-      <Text style={styles.quickActionLabel}>{action.label}</Text>
     </TouchableOpacity>
   );
 };
@@ -184,63 +171,69 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    marginBottom: 28,
+    marginTop: 24, // Reset to standard spacing
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "baseline",
+    alignItems: "center",
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: COLORS.text,
-    letterSpacing: -0.3,
+    fontSize: 20,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: -0.5,
   },
   sectionSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textMuted,
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+    fontWeight: "600",
+    marginTop: 2,
   },
-  quickActions: {
+  viewAllText: {
+    fontSize: 14,
+    color: COLORS.secondary,
+    fontWeight: "700",
+  },
+  quickActionsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
+    gap: 12,
   },
-  quickActionItem: {
+  cardWrapper: {
+    width: (SCREEN_WIDTH - 52) / 2, // 2 items per row
+  },
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: "row",
     alignItems: "center",
-    width: (SCREEN_WIDTH - 80) / 4,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(33, 16, 11, 0.05)",
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  quickActionIconWrap: {
-    position: "relative",
-    marginBottom: 10,
-  },
-  quickActionIcon: {
-    width: 62,
-    height: 62,
-    borderRadius: 20,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(33, 16, 11, 0.08)",
   },
-  accentRing: {
-    position: "absolute",
-    top: -3,
-    left: -3,
-    right: -3,
-    bottom: -3,
-    borderRadius: 23,
-    borderWidth: 1,
-  },
-  quickActionLabel: {
-    fontSize: 12,
+  cardLabel: {
+    fontSize: 15,
     fontWeight: "700",
-    color: COLORS.text,
-    textAlign: "center",
-    letterSpacing: 0.2,
+    color: COLORS.primary,
+    letterSpacing: -0.2,
   },
 });
 
