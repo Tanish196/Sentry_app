@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Search, CircleX, SlidersHorizontal } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { Avatar, Text } from "react-native-paper";
@@ -27,42 +27,38 @@ const UserHeader: React.FC<UserHeaderProps> = ({
           <Text style={styles.userName}>{user?.name || "Explore India"}</Text>
         </View>
         <View style={styles.avatarContainer}>
-          <Avatar.Image
-            size={46}
-            source={{
-              uri: user?.avatar || "https://avatar.iran.liara.run/public/3",
-            }}
-            style={styles.avatar}
-          />
+          {user?.avatar ? (
+            <Avatar.Image
+              size={46}
+              source={{ uri: user.avatar }}
+              style={styles.avatar}
+            />
+          ) : (
+            <Avatar.Text
+              size={46}
+              label={user?.name ? user.name.charAt(0).toUpperCase() : "G"}
+              style={[styles.avatar, { backgroundColor: COLORS.primary }]}
+              color={COLORS.white}
+            />
+          )}
           <View style={styles.onlineDot} />
         </View>
       </View>
 
       {/* Location Row */}
       <TouchableOpacity style={styles.locationRow} activeOpacity={0.7}>
-        <MaterialCommunityIcons
-          name="map-marker"
-          size={16}
-          color="#21100B"
-        />
-        <Text style={styles.locationText}>India • All Destinations</Text>
-        <MaterialCommunityIcons
-          name="chevron-down"
-          size={16}
-          color={COLORS.textMuted}
-        />
       </TouchableOpacity>
 
       {/* Big Title */}
-      <Text style={styles.headerTitle}>Where would you{"\n"}like to go?</Text>
+      <Text style={styles.headerTitle}>Where would you like to go?</Text>
 
       {/* Premium Search Bar */}
       <View style={styles.searchBarWrapper}>
         <View style={styles.searchBar}>
-          <MaterialCommunityIcons
-            name="magnify"
+          <Search
             size={20}
             color="#4A4341"
+            strokeWidth={2.5}
             style={styles.searchIcon}
           />
           <TextInput
@@ -78,18 +74,18 @@ const UserHeader: React.FC<UserHeaderProps> = ({
               onPress={() => setSearchQuery("")}
               style={styles.clearButton}
             >
-              <MaterialCommunityIcons
-                name="close-circle"
+              <CircleX
                 size={18}
                 color="#8C7D79"
+                strokeWidth={2}
               />
             </TouchableOpacity>
           )}
           <View style={styles.filterButton}>
-            <MaterialCommunityIcons
-              name="tune-variant"
+            <SlidersHorizontal
               size={18}
               color="#21100B"
+              strokeWidth={2}
             />
           </View>
         </View>

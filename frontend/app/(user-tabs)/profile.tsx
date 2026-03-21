@@ -4,11 +4,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Avatar, Divider, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -132,47 +132,25 @@ export default function ProfileScreen() {
           {/* Avatar Section */}
           <View style={styles.profileSection}>
             <View style={styles.avatarWrapper}>
-              <Avatar.Image
-                size={88}
-                source={{
-                  uri: user?.avatar || "https://avatar.iran.liara.run/public/3",
-                }}
-                style={styles.avatar}
-              />
+              {user?.avatar ? (
+                <Avatar.Image
+                  size={88}
+                  source={{ uri: user.avatar }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <Avatar.Text
+                  size={88}
+                  label={user?.name ? user.name.charAt(0).toUpperCase() : "G"}
+                  style={[styles.avatar, { backgroundColor: COLORS.primary }]}
+                  color={COLORS.white}
+                />
+              )}
               <TouchableOpacity style={styles.editAvatarBtn}>
                 <MaterialCommunityIcons name="camera" size={14} color={COLORS.white} />
               </TouchableOpacity>
             </View>
             <Text style={styles.userName}>{user?.name || "Guest User"}</Text>
-            <Text style={styles.userEmail}>
-              {user?.email || "guest@example.com"}
-            </Text>
-            <View style={styles.badgeContainer}>
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={14}
-                color="#62DCA3"
-              />
-              <Text style={styles.badgeText}>Verified Traveler</Text>
-            </View>
-          </View>
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>Places</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>4.9</Text>
-              <Text style={styles.statLabel}>Rating</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>3</Text>
-              <Text style={styles.statLabel}>Trips</Text>
-            </View>
           </View>
         </LinearGradient>
 

@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as LucideIcons from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
@@ -161,11 +161,12 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             { backgroundColor: `${action.color}20` },
           ]}
         >
-          <MaterialCommunityIcons
-            name={action.icon as any}
-            size={26}
-            color={action.color}
-          />
+          {(() => {
+            const Icon = (LucideIcons as any)[action.icon];
+            return Icon ? (
+              <Icon size={26} color={action.color} strokeWidth={2} />
+            ) : null;
+          })()}
         </View>
         {/* Colored accent ring */}
         <View

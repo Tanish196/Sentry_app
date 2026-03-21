@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as LucideIcons from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { ActivityIndicator, Text } from "react-native-paper";
@@ -10,10 +10,10 @@ import {
 import { getCurrentLocation } from "../../services/maps/locationService";
 
 const getIconColor = (icon: string) => {
-  if (icon.includes("sunny")) return "#F59E0B";
-  if (icon.includes("cloudy")) return "#8A9BB8";
-  if (icon.includes("rainy") || icon.includes("lightning")) return "#4F8EF7";
-  if (icon.includes("snowy")) return "#60A5FA";
+  if (icon.includes("Sun")) return "#F59E0B";
+  if (icon.includes("Cloud") && !icon.includes("Rain") && !icon.includes("Bolt")) return "#8A9BB8";
+  if (icon.includes("Rain") || icon.includes("Bolt")) return "#4F8EF7";
+  if (icon.includes("Snowflake")) return "#60A5FA";
   return "#F59E0B";
 };
 
@@ -61,7 +61,7 @@ const WeatherWidget: React.FC = () => {
       <View style={styles.section}>
         <View style={styles.weatherCard}>
           <View style={styles.errorRow}>
-            <MaterialCommunityIcons name="weather-cloudy-alert" size={36} color="#8A9BB8" />
+            <LucideIcons.CloudAlert size={36} color="#8A9BB8" strokeWidth={2} />
             <View style={styles.errorInfo}>
               <Text style={styles.errorText}>Weather unavailable</Text>
               <TouchableOpacity onPress={fetchWeather}>
@@ -81,7 +81,7 @@ const WeatherWidget: React.FC = () => {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Current Weather</Text>
         <TouchableOpacity onPress={fetchWeather} style={styles.refreshBtn}>
-          <MaterialCommunityIcons name="refresh" size={14} color={COLORS.textMuted} />
+          <LucideIcons.RefreshCw size={14} color={COLORS.textMuted} strokeWidth={2.5} />
           <Text style={styles.refreshText}>Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -90,11 +90,10 @@ const WeatherWidget: React.FC = () => {
         {/* Left: Temp + Icon */}
         <View style={styles.weatherLeft}>
           <View style={[styles.weatherIconBg, { backgroundColor: `${iconColor}20` }]}>
-            <MaterialCommunityIcons
-              name={weather.icon as any}
-              size={36}
-              color={iconColor}
-            />
+            {(() => {
+              const Icon = (LucideIcons as any)[weather.icon];
+              return Icon ? <Icon size={36} color={iconColor} strokeWidth={2} /> : null;
+            })()}
           </View>
           <View style={styles.tempInfo}>
             <Text style={styles.temperature}>{weather.temperature}°</Text>
@@ -108,7 +107,7 @@ const WeatherWidget: React.FC = () => {
         {/* Right: Location + Advice */}
         <View style={styles.weatherRight}>
           <View style={styles.locationRow}>
-            <MaterialCommunityIcons name="map-marker" size={13} color={COLORS.primary} />
+            <LucideIcons.MapPin size={13} color={COLORS.primary} strokeWidth={2.5} />
             <Text style={styles.locationName} numberOfLines={1}>
               {weather.city}
             </Text>

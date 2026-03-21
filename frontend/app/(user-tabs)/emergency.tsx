@@ -73,7 +73,7 @@ export default function EmergencyScreen() {
     setSosActive(true);
 
     Alert.alert(
-      "🚨 SOS Activated",
+      " SOS Activated",
       "Emergency alert will be sent to your emergency contacts with your current location.\n\nDo you want to proceed?",
       [
         {
