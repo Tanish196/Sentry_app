@@ -11,65 +11,93 @@ import {
   View,
 } from "react-native";
 import { ActivityIndicator, Text } from "react-native-paper";
-import { getCurrentLocation } from "../../services/maps/locationService";
+import * as Location from "expo-location";
+import * as Haptics from "expo-haptics";
+import { useAuth } from "../../store/AuthContext";
 
 const ShareLocation: React.FC = () => {
+  const { user } = useAuth();
   const [sharing, setSharing] = useState(false);
 
   const handleShareLocation = async () => {
-    try {
-      setSharing(true);
-      const location = await getCurrentLocation();
+    if (sharing) return;
+    setSharing(true);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      if (!location) {
-        Alert.alert(
-          "Location Unavailable",
-          "Unable to get your current location. Please enable location services.",
-          [{ text: "OK" }]
-        );
+    try {
+      // 1. Request Permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
         setSharing(false);
+        Alert.alert(
+          "Permission Denied",
+          "Location permission is required to share your location. Please enable it in Settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
+        );
         return;
       }
 
-      const { latitude, longitude } = location;
-      const mapsUrl = Platform.select({
-        ios: `maps:0,0?q=${latitude},${longitude}`,
-        android: `geo:0,0?q=${latitude},${longitude}`,
+      // 2. Get Current Location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
       });
-      const googleMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
 
-      Alert.alert(
-        "Share Your Location",
-        "Choose how you want to share your location:",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Share Link",
-            onPress: async () => {
-              try {
-                await Share.share({
-                  message: `I'm sharing my live location!\n\nView on map: ${googleMapsUrl}`,
-                  title: "My Current Location",
-                });
-              } catch (error) {}
-            },
-          },
-          {
-            text: "Open in Maps",
-            onPress: async () => {
-              try {
-                const supported = await Linking.canOpenURL(mapsUrl!);
-                await Linking.openURL(supported ? mapsUrl! : googleMapsUrl);
-              } catch (error) {
-                Alert.alert("Error", "Unable to open maps application");
-              }
-            },
-          },
-        ]
-      );
-      setSharing(false);
+      const { latitude, longitude } = location.coords;
+
+      // 3. Reverse Geocode
+      let addressStr = "";
+      try {
+        const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+        if (geocode.length > 0) {
+          const place = geocode[0];
+          const parts = [
+            place.name,
+            place.street,
+            place.city,
+            place.region,
+            place.postalCode,
+          ].filter(Boolean);
+          addressStr = parts.join(", ");
+        }
+      } catch (e) {
+        console.warn("Reverse geocode failed", e);
+      }
+
+      // 4. Build Professional Message
+      const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+      const userName = user?.name || "A Sentry User";
+      const timestamp = new Date().toLocaleString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
+      const shareMessage =
+        `*LIVE LOCATION — Emergency Share*\n\n` +
+        `From: ${userName}\n` +
+        `Location: ${addressStr || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}\n` +
+        `Time: ${timestamp}\n\n` +
+        `Google Maps URL:\n${mapsLink}\n\n` +
+        `This location was shared via the Sentry Emergency App.`;
+
+      // 5. Open Share Sheet
+      const result = await Share.share({
+        message: shareMessage,
+        title: "My Current Location",
+      });
+
+      if (result.action === Share.sharedAction) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to share location. Please try again.");
+      console.error("Share location error", error);
+      Alert.alert("Error", "Failed to get location. Please try again.");
+    } finally {
       setSharing(false);
     }
   };

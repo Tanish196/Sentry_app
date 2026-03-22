@@ -19,6 +19,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Alert,
@@ -47,6 +48,7 @@ import sosService, {
 import { AddContactModal } from "../../components/emergency/AddContactModal";
 import { SafetyTips } from "../../components/emergency/SafetyTips";
 import { CustomAlertModal, AlertConfig } from "../../components/emergency/CustomAlertModal";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -143,6 +145,26 @@ export default function EmergencyScreen() {
   const [isDispatching, setIsDispatching] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView>(null);
+  const [isSharingLocation, setIsSharingLocation] = useState(false);
+
+  // ─── LOAD PERSISTED CONTACTS ───────────────────────
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const key = `@sentry_contacts_${user?.id || 'default'}`;
+        const storedContacts = await AsyncStorage.getItem(key);
+        if (storedContacts) {
+          setFamilyContacts(JSON.parse(storedContacts));
+        } else {
+          // fallback to empty if no contacts found
+          setFamilyContacts([]);
+        }
+      } catch (err) {
+        console.error("[SOS] Failed to load contacts:", err);
+      }
+    };
+    loadContacts();
+  }, [user?.id]);
 
   // ─── SYSTEM ALERTS STATE ───────────────────────────
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
@@ -315,7 +337,16 @@ export default function EmergencyScreen() {
       relationship: newContactRelation.trim() || "Contact",
     };
 
-    setFamilyContacts([...familyContacts, newContact]);
+    const updatedContacts = [...familyContacts, newContact];
+    setFamilyContacts(updatedContacts);
+    
+    try {
+      const key = `@sentry_contacts_${user?.id || 'default'}`;
+      await AsyncStorage.setItem(key, JSON.stringify(updatedContacts));
+    } catch (err) {
+      console.error("[SOS] Failed to save contact:", err);
+    }
+    
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setNewContactName("");
     setNewContactPhone("");
@@ -351,10 +382,124 @@ export default function EmergencyScreen() {
       onCancel: hideAlert,
       onConfirm: async () => {
         hideAlert();
-        setFamilyContacts(familyContacts.filter((c) => c.id !== contactId));
+        const updatedContacts = familyContacts.filter((c) => c.id !== contactId);
+        setFamilyContacts(updatedContacts);
+        
+        try {
+          const key = `@sentry_contacts_${user?.id || 'default'}`;
+          await AsyncStorage.setItem(key, JSON.stringify(updatedContacts));
+        } catch (err) {
+          console.error("[SOS] Failed to save after contact deletion:", err);
+        }
+
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
     });
+  };
+
+  // ─── SHARE LIVE LOCATION HANDLER ────────────────────
+
+  const handleShareLiveLocation = async () => {
+    if (isSharingLocation) return;
+    setIsSharingLocation(true);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      // 1. Request Permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setIsSharingLocation(false);
+        setAlertConfig({
+          visible: true,
+          type: "error",
+          title: "Permission Denied",
+          message: "Location permission is required to share your live location. Please enable it in Settings.",
+          confirmText: "Open Settings",
+          cancelText: "Cancel",
+          onCancel: hideAlert,
+          onConfirm: async () => {
+            hideAlert();
+            await Linking.openSettings();
+          },
+        });
+        return;
+      }
+
+      // 2. Get Current Location (high accuracy)
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const { latitude, longitude } = location.coords;
+
+      // 3. Reverse Geocode for human-readable address
+      let addressStr = "";
+      try {
+        const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+        if (geocode.length > 0) {
+          const place = geocode[0];
+          const parts = [
+            place.name,
+            place.street,
+            place.city,
+            place.region,
+            place.postalCode,
+          ].filter(Boolean);
+          addressStr = parts.join(", ");
+        }
+      } catch {
+        // geocode may fail — continue with coords
+      }
+
+      // 4. Build Share Message
+      const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+      const userName = user?.name || "A Sentry User";
+      const timestamp = new Date().toLocaleString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
+      const shareMessage =
+        `*LIVE LOCATION — Emergency Share*\n\n` +
+        `From: ${userName}\n` +
+        `Location: ${addressStr || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}\n` +
+        `Time: ${timestamp}\n\n` +
+        `Google Maps URL:\n${mapsLink}\n\n` +
+        `This location was shared via the Sentry Emergency App.`;
+
+      // 5. Open Native Share Sheet
+      const result = await Share.share({
+        message: shareMessage,
+        title: "My Live Location — Sentry Emergency",
+      });
+
+      if (result.action === Share.sharedAction) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setAlertConfig({
+          visible: true,
+          type: "success",
+          title: "Location Shared",
+          message: `Your live location has been shared successfully.`,
+          confirmText: "Done",
+          onConfirm: hideAlert,
+        });
+      }
+    } catch (err: any) {
+      console.error("[Location] Share error:", err);
+      setAlertConfig({
+        visible: true,
+        type: "error",
+        title: "Location Error",
+        message: err?.message || "Unable to fetch your current location. Please check your GPS and try again.",
+        confirmText: "Okay",
+        onConfirm: hideAlert,
+      });
+    } finally {
+      setIsSharingLocation(false);
+    }
   };
 
   // ─── RENDER ────────────────────────────────────────
@@ -447,21 +592,19 @@ export default function EmergencyScreen() {
         {/* Share Location */}
         <View style={styles.section}>
           <TouchableOpacity
-            style={styles.shareButton}
-            onPress={() => {
-              setAlertConfig({
-                visible: true,
-                type: "info",
-                title: "Share Location",
-                message: "Location sharing feature is currently unavailable.",
-                confirmText: "Okay",
-                onConfirm: hideAlert,
-              });
-            }}
+            style={[styles.shareButton, isSharingLocation && { opacity: 0.7 }]}
+            onPress={handleShareLiveLocation}
             activeOpacity={0.85}
+            disabled={isSharingLocation}
           >
-            <Share2 size={20} color={COLORS.white} />
-            <Text style={styles.shareButtonText}>Share Live Location</Text>
+            {isSharingLocation ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Share2 size={20} color={COLORS.white} />
+            )}
+            <Text style={styles.shareButtonText}>
+              {isSharingLocation ? "Fetching Location..." : "Share Live Location"}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
