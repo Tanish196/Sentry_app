@@ -27,7 +27,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -37,6 +39,7 @@ import {
   ChatMessage,
   QuickChip,
 } from "../../constants/chatData";
+import chatService from "../../services/api/chatService";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import {
@@ -105,27 +108,8 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
     }, 100);
   }, []);
 
-  const getBotResponse = (userText: string): string => {
-    const lower = userText.toLowerCase().trim();
-
-    // Check for keyword matches
-    for (const [key, response] of Object.entries(BOT_RESPONSES)) {
-      if (lower.includes(key)) {
-        return response;
-      }
-    }
-
-    // Check for greetings
-    const greetings = ["hi", "hello", "hey", "hola", "sup", "yo"];
-    if (greetings.some((g) => lower.startsWith(g))) {
-      return BOT_RESPONSES.greeting;
-    }
-
-    return BOT_RESPONSES.default;
-  };
-
   const sendMessage = useCallback(
-    (text: string) => {
+    async (text: string) => {
       if (!text.trim()) return;
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -158,26 +142,25 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
       setShowChips(false);
       scrollToBottom();
 
-      // Show typing indicator after a brief pause
-      setTimeout(() => {
-        setIsTyping(true);
-        scrollToBottom();
+      // Show typing indicator
+      setIsTyping(true);
+      scrollToBottom();
 
-        // Mark user message as delivered
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === userMessage.id ? { ...m, status: "delivered" } : m
-          )
-        );
-      }, 400);
+      // Mark user message as delivered
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMessage.id ? { ...m, status: "delivered" } : m
+        )
+      );
 
-      // Bot responds after realistic delay
-      const responseDelay = 1200 + Math.random() * 800;
-      setTimeout(() => {
+      try {
+        // CALL THE REST API !
+        const replyText = await chatService.sendMessage(text);
+
         const botReply: ChatMessage = {
           id: `bot_${Date.now()}`,
           sender: "bot",
-          text: getBotResponse(text),
+          text: replyText,
           timestamp: new Date(),
         };
 
@@ -194,7 +177,18 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
 
         scrollToBottom();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }, responseDelay);
+      } catch (err) {
+        setIsTyping(false);
+
+        const errorReply: ChatMessage = {
+          id: `error_${Date.now()}`,
+          sender: "bot",
+          text: "I'm having trouble connecting to the network. Please try again later.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorReply]);
+        scrollToBottom();
+      }
     },
     [scrollToBottom]
   );
@@ -280,6 +274,8 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
             },
           ]}
         >
+          <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFillObject} />
+
           {/* ========== HEADER ========== */}
           <LinearGradient
             colors={[CHAT_COLORS.headerGradientStart, CHAT_COLORS.headerGradientEnd]}
@@ -291,123 +287,129 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
             <View style={styles.headerLeft}>
               <View style={styles.headerAvatarRing}>
                 <View style={styles.headerAvatar}>
-                  <Image 
-                    source={require("../../assets/images/chat-bot.png")}
-                    style={styles.headerBotImage}
-                    resizeMode="cover"
-                  />
-                </View>
-                <View style={styles.onlineDot} />
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerName}>{BOT_INFO.name}</Text>
-                {/* <Text style={styles.headerSubtitle}>{BOT_INFO.subtitle}</Text> */}
-              </View>
-            </View>
+<<<<<<< HEAD
+  <Image
+    source={require("../../assets/images/chat-bot.png")}
+    style={styles.headerBotImage}
+    resizeMode="cover"
+  />
+=======
+                  <Image source={require("../../assets/images/chat-bot.png")} style={{ width: 44, height: 44, borderRadius: 22 }} resizeMode="cover" />
+>>>>>>> feature/backend-connect
+                </View >
+  <View style={styles.onlineDot} />
+              </View >
+  <View style={styles.headerInfo}>
+    <Text style={styles.headerName}>{BOT_INFO.name}</Text>
+    <Text style={styles.headerSubtitle}>{BOT_INFO.subtitle}</Text>
+  </View>
+            </View >
 
-            {/* Right: Actions */}
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.headerBtn}
-                onPress={handleClose}
-                activeOpacity={0.6}
-              >
-                <X size={18} color="rgba(255,255,255,0.7)" strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
+  {/* Right: Actions */ }
+  < View style = { styles.headerActions } >
+    <TouchableOpacity
+      style={styles.headerBtn}
+      onPress={handleClose}
+      activeOpacity={0.6}
+    >
+      <X size={18} color="rgba(255,255,255,0.7)" strokeWidth={2.5} />
+    </TouchableOpacity>
+            </View >
 
-            {/* Bottom glow */}
-            <View style={styles.headerGlow} />
-          </LinearGradient>
+  {/* Bottom glow */ }
+  < View style = { styles.headerGlow } />
+          </LinearGradient >
 
-          {/* ========== MESSAGE BODY ========== */}
-          <View style={styles.body}>
-            {!hasMessages ? (
-              <WelcomeScreen onFeaturePress={handleWelcomeFeaturePress} />
-            ) : (
-              <>
-                <FlatList
-                  ref={flatListRef}
-                  data={messages}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderMessage}
-                  contentContainerStyle={styles.messageList}
-                  showsVerticalScrollIndicator={false}
-                  ListHeaderComponent={
-                    <DateSeparator label="Today" />
-                  }
-                  ListFooterComponent={
-                    <TypingIndicator visible={isTyping} />
-                  }
-                  onContentSizeChange={scrollToBottom}
-                />
-              </>
-            )}
-          </View>
+  {/* ========== MESSAGE BODY ========== */ }
+  < View style = { styles.body } >
+    {!hasMessages ? (
+      <WelcomeScreen onFeaturePress={handleWelcomeFeaturePress} />
+    ) : (
+      <>
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.messageList}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <DateSeparator label="Today" />
+          }
+          ListFooterComponent={
+            <TypingIndicator visible={isTyping} />
+          }
+          onContentSizeChange={scrollToBottom}
+        />
+      </>
+    )}
+          </View >
 
-          {/* ========== QUICK CHIPS ========== */}
-          {hasMessages && showChips && (
-            <QuickReplyChips onChipPress={handleChipPress} />
-          )}
+  {/* ========== QUICK CHIPS ========== */ }
+{
+  hasMessages && showChips && (
+    <QuickReplyChips onChipPress={handleChipPress} />
+  )
+}
 
-          {/* ========== INPUT BAR ========== */}
-          <View style={styles.inputBar}>
-            {/* Left icons */}
-            <View style={styles.inputLeftIcons}>
-              <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.6}>
-                <Paperclip size={18} color={CHAT_COLORS.mutedText} strokeWidth={2} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.6}>
-                <ImageIcon size={18} color={CHAT_COLORS.mutedText} strokeWidth={2} />
-              </TouchableOpacity>
-            </View>
+{/* ========== INPUT BAR ========== */ }
+<View style={styles.inputBar}>
+  {/* Left icons */}
+  <View style={styles.inputLeftIcons}>
+    <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.6}>
+      <Paperclip size={18} color={CHAT_COLORS.mutedText} strokeWidth={2} />
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.6}>
+      <ImageIcon size={18} color={CHAT_COLORS.mutedText} strokeWidth={2} />
+    </TouchableOpacity>
+  </View>
 
-            {/* Text field */}
-            <View style={styles.inputFieldWrapper}>
-              <TextInput
-                style={styles.inputField}
-                value={inputText}
-                onChangeText={setInputText}
-                placeholder="Ask about destinations, hotels, food..."
-                placeholderTextColor={CHAT_COLORS.inputPlaceholder}
-                multiline
-                maxLength={500}
-                returnKeyType="send"
-                onSubmitEditing={() => sendMessage(inputText)}
-                blurOnSubmit
-              />
-            </View>
+  {/* Text field */}
+  <View style={styles.inputFieldWrapper}>
+    <TextInput
+      style={styles.inputField}
+      value={inputText}
+      onChangeText={setInputText}
+      placeholder="Ask about destinations, hotels, food..."
+      placeholderTextColor={CHAT_COLORS.inputPlaceholder}
+      multiline
+      maxLength={500}
+      returnKeyType="send"
+      onSubmitEditing={() => sendMessage(inputText)}
+      blurOnSubmit
+    />
+  </View>
 
-            {/* Right icons */}
-            <TouchableOpacity style={styles.micBtn} activeOpacity={0.6}>
-              <Mic size={18} color={CHAT_COLORS.mutedText} strokeWidth={2} />
-            </TouchableOpacity>
+  {/* Right icons */}
+  <TouchableOpacity style={styles.micBtn} activeOpacity={0.6}>
+    <Mic size={18} color={CHAT_COLORS.mutedText} strokeWidth={2} />
+  </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.sendBtn,
-                !inputText.trim() && styles.sendBtnDisabled,
-              ]}
-              activeOpacity={0.7}
-              disabled={!inputText.trim()}
-              onPress={() => sendMessage(inputText)}
-            >
-              <Animated.View style={{ transform: [{ scale: sendScaleAnim }] }}>
-                <Send
-                  size={18}
-                  color={
-                    inputText.trim()
-                      ? CHAT_COLORS.white
-                      : CHAT_COLORS.mutedText
-                  }
-                  strokeWidth={2.5}
-                />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </KeyboardAvoidingView>
-    </Modal>
+  <TouchableOpacity
+    style={[
+      styles.sendBtn,
+      !inputText.trim() && styles.sendBtnDisabled,
+    ]}
+    activeOpacity={0.7}
+    disabled={!inputText.trim()}
+    onPress={() => sendMessage(inputText)}
+  >
+    <Animated.View style={{ transform: [{ scale: sendScaleAnim }] }}>
+      <Send
+        size={18}
+        color={
+          inputText.trim()
+            ? CHAT_COLORS.white
+            : CHAT_COLORS.mutedText
+        }
+        strokeWidth={2.5}
+      />
+    </Animated.View>
+  </TouchableOpacity>
+</View>
+        </Animated.View >
+      </KeyboardAvoidingView >
+    </Modal >
   );
 };
 
@@ -501,26 +503,32 @@ export const ChatFAB: React.FC<ChatFABProps> = ({
           end={{ x: 1, y: 1 }}
           style={fabStyles.gradient}
         >
-          <Image 
-            source={require("../../assets/images/chat-bot.png")}
-            style={fabStyles.fabBotImage}
-            resizeMode="cover"
-          />
-        </LinearGradient>
-      </TouchableOpacity>
+<<<<<<< HEAD
+<Image
+  source={require("../../assets/images/chat-bot.png")}
+  style={fabStyles.fabBotImage}
+  resizeMode="cover"
+/>
+=======
+          <Image source={require("../../assets/images/chat-bot.png")} style={{ width: 60, height: 60, borderRadius: 30 }} resizeMode="cover" />
+>>>>>>> feature/backend-connect
+        </LinearGradient >
+      </TouchableOpacity >
 
-      {/* Unread badge */}
-      {hasUnread && (
-        <Animated.View
-          style={[
-            fabStyles.badge,
-            { transform: [{ scale: badgePulse }] },
-          ]}
-        >
-          <View style={fabStyles.badgeDot} />
-        </Animated.View>
-      )}
+  {/* Unread badge */ }
+{
+  hasUnread && (
+    <Animated.View
+      style={[
+        fabStyles.badge,
+        { transform: [{ scale: badgePulse }] },
+      ]}
+    >
+      <View style={fabStyles.badgeDot} />
     </Animated.View>
+  )
+}
+    </Animated.View >
   );
 };
 
@@ -540,7 +548,7 @@ const styles = StyleSheet.create({
   },
   chatWindow: {
     height: SCREEN_HEIGHT * 0.85,
-    backgroundColor: CHAT_COLORS.windowBg,
+    backgroundColor: "rgba(255, 255, 255, 0.75)", // glassmorphism semi-transparent base
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     overflow: "hidden",
@@ -575,10 +583,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -649,7 +657,7 @@ const styles = StyleSheet.create({
   // Body
   body: {
     flex: 1,
-    backgroundColor: CHAT_COLORS.windowBg,
+    backgroundColor: "transparent",
   },
   messageList: {
     paddingTop: 8,
@@ -663,8 +671,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: CHAT_COLORS.separator,
-    backgroundColor: "rgba(255,255,255,0.02)",
+    borderTopColor: "rgba(33, 16, 11, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
     gap: 6,
   },
   inputLeftIcons: {
@@ -711,7 +719,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   sendBtnDisabled: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(33, 16, 11, 0.06)",
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -755,9 +763,9 @@ const fabStyles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#FF3B30",
+    backgroundColor: "#C51E3A",
     borderWidth: 2,
-    borderColor: CHAT_COLORS.windowBg,
+    borderColor: "#FFFFFF",
   },
 });
 
