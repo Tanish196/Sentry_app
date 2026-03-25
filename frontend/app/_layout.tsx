@@ -2,12 +2,40 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { PaperProvider } from "react-native-paper";
 import { AuthProvider } from "../store/AuthContext";
+import { SocketProvider } from "../store/SocketContext";
 import { theme } from "../theme";
+import { 
+  useFonts, 
+  PlusJakartaSans_500Medium, 
+  PlusJakartaSans_700Bold, 
+  PlusJakartaSans_800ExtraBold 
+} from "@expo-google-fonts/plus-jakarta-sans";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+
+// Prevent auto conceal while fetching heavy font files
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null; // Hold back rendering until fonts are perfectly loaded
+  }
   return (
     <AuthProvider>
-      <PaperProvider theme={theme}>
+      <SocketProvider>
+        <PaperProvider theme={theme}>
         <StatusBar style="auto" />
 
         <Stack
@@ -47,7 +75,8 @@ export default function RootLayout() {
             }}
           />
         </Stack>
-      </PaperProvider>
+        </PaperProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }

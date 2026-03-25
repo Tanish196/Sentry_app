@@ -4,10 +4,11 @@ import dotenv from "dotenv";
 import { ClientManager } from "./ClientManager.js";
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || "123123";
-const wss = new WebSocketServer({ port: 8080 });
-console.log("WebSocket backend is up");
+const port = Number(process.env.PORT) || 8080;
+const wss = new WebSocketServer({ port });
+console.log(`WebSocket backend is up on port ${port}`);
 wss.on("connection", (ws, request) => {
-    const url = request.url;
+    const { url } = request;
     if (!url) {
         ws.close();
         return;
@@ -36,5 +37,5 @@ wss.on("connection", (ws, request) => {
     const role = roleFromToken === "ADMIN" ? "ADMIN" : "USER";
     new ClientManager(ws, decoded.userId, role);
 });
-console.log("WebSocket server running on ws://localhost:8080");
+console.log(`WebSocket server running on ws://localhost:${port}`);
 //# sourceMappingURL=index.js.map
