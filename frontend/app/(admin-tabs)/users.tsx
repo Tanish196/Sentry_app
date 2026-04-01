@@ -15,15 +15,18 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const COLORS = {
   primary: "#21100B",
+  accent: "#38302E",
   secondary: "#8C7D79",
-  accent: "#8C7D79",
   error: "#D93636",
   success: "#10B981",
+  warning: "#F59E0B",
   background: "#F5F1EE",
   surface: "#FFFFFF",
   text: "#1A1818",
   textLight: "#4A4341",
+  textMuted: "#8C7D79",
   white: "#FFFFFF",
+  border: "#EDE7E3",
 };
 
 const USERS = [
@@ -101,7 +104,7 @@ export default function UsersScreen() {
       case "inactive":
         return COLORS.error;
       case "pending":
-        return COLORS.accent;
+        return COLORS.warning;
       default:
         return COLORS.textLight;
     }
@@ -111,7 +114,7 @@ export default function UsersScreen() {
     <View style={styles.container}>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
         <Text style={styles.headerTitle}>User Management</Text>
         <Text style={styles.headerSubtitle}>{USERS.length} total users</Text>
       </View>
@@ -124,6 +127,8 @@ export default function UsersScreen() {
           value={searchQuery}
           style={styles.searchBar}
           inputStyle={styles.searchInput}
+          iconColor={COLORS.textMuted}
+          placeholderTextColor={COLORS.textMuted}
         />
       </View>
 
@@ -153,11 +158,13 @@ export default function UsersScreen() {
       </ScrollView>
 
       {/* User List */}
-      <ScrollView style={styles.userList} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.userList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {filteredUsers.map((user) => (
           <Card key={user.id} style={styles.userCard}>
             <Card.Content style={styles.userContent}>
-              <Avatar.Image size={48} source={{ uri: user.avatar }} />
+              <View style={styles.avatarRing}>
+                <Avatar.Image size={48} source={{ uri: user.avatar }} />
+              </View>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>{user.name}</Text>
                 <Text style={styles.userEmail}>{user.email}</Text>
@@ -185,7 +192,7 @@ export default function UsersScreen() {
                 <MaterialCommunityIcons
                   name="dots-vertical"
                   size={24}
-                  color={COLORS.textLight}
+                  color={COLORS.textMuted}
                 />
               </TouchableOpacity>
             </Card.Content>
@@ -215,22 +222,28 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.text,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 4,
+    fontWeight: "500",
   },
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
   searchBar: {
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 18,
+    elevation: 3,
     backgroundColor: COLORS.white,
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   searchInput: {
     fontSize: 14,
@@ -243,13 +256,18 @@ const styles = StyleSheet.create({
   filterChip: {
     backgroundColor: COLORS.white,
     marginRight: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   filterChipSelected: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterText: {
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     fontSize: 13,
+    fontWeight: "600",
   },
   filterTextSelected: {
     color: COLORS.white,
@@ -260,12 +278,22 @@ const styles = StyleSheet.create({
   },
   userCard: {
     marginBottom: 12,
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   userContent: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  avatarRing: {
+    padding: 2,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
   userInfo: {
     flex: 1,
@@ -273,12 +301,13 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.text,
+    letterSpacing: -0.2,
   },
   userEmail: {
     fontSize: 13,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   userMeta: {
@@ -288,14 +317,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   roleTag: {
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: `${COLORS.primary}12`,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   roleText: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.primary,
   },
   statusDot: {
@@ -305,7 +334,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "600",
     textTransform: "capitalize",
   },
   moreButton: {
@@ -314,7 +343,13 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 20,
+    bottom: 100,
     backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

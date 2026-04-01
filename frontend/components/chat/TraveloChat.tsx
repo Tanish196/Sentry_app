@@ -38,7 +38,7 @@ import {
   ChatMessage,
   QuickChip,
 } from "../../constants/chatData";
-import chatService from "../../services/api/chatService";
+import { useSocket } from "../../store/SocketContext";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import {
@@ -63,6 +63,7 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [showChips, setShowChips] = useState(true);
   const flatListRef = useRef<FlatList>(null);
+  const { sendChatAsk, onChatMessage, isConnected } = useSocket();
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
@@ -106,6 +107,49 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, []);
+
+  // Listen for WebSocket chat responses
+  useEffect(() => {
+    const unsubscribe = onChatMessage((data) => {
+      setIsTyping(false);
+      
+      if (data.type === 'CHAT_RESPONSE') {
+        const botReply: ChatMessage = {
+          id: `bot_${Date.now()}`,
+          sender: "bot",
+          text: data.payload?.answer || "No response text",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, botReply]);
+        setShowChips(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        scrollToBottom();
+        
+        // Mark last user msg as seen
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          for (let i = newMessages.length - 1; i >= 0; i--) {
+            if (newMessages[i].sender === "user") {
+              newMessages[i].status = "seen";
+              break;
+            }
+          }
+          return newMessages;
+        });
+      } else if (data.type === 'CHAT_ERROR') {
+        const errorReply: ChatMessage = {
+          id: `error_${Date.now()}`,
+          sender: "bot",
+          text: data.payload?.message || "Something went wrong.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorReply]);
+        scrollToBottom();
+      }
+    });
+
+    return unsubscribe;
+  }, [onChatMessage, scrollToBottom]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -152,44 +196,23 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
         )
       );
 
-      try {
-        // CALL THE REST API !
-        const replyText = await chatService.sendMessage(text);
-
-        const botReply: ChatMessage = {
-          id: `bot_${Date.now()}`,
-          sender: "bot",
-          text: replyText,
-          timestamp: new Date(),
-        };
-
+      if (!isConnected) {
         setIsTyping(false);
-        setMessages((prev) => [...prev, botReply]);
-        setShowChips(true);
-
-        // Mark user message as seen
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === userMessage.id ? { ...m, status: "seen" } : m
-          )
-        );
-
-        scrollToBottom();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (err) {
-        setIsTyping(false);
-
         const errorReply: ChatMessage = {
           id: `error_${Date.now()}`,
           sender: "bot",
-          text: "I'm having trouble connecting to the network. Please try again later.",
+          text: "Not connected to chat server. Please check your connection.",
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorReply]);
         scrollToBottom();
+        return;
       }
+
+      // Send via WebSocket
+      sendChatAsk(text.trim());
     },
-    [scrollToBottom]
+    [scrollToBottom, sendChatAsk, isConnected]
   );
 
   const handleChipPress = useCallback(

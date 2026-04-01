@@ -23,13 +23,15 @@ interface UserLocationEvent {
   source: string;
 }
 
-type IncomingMessage = UserLocationEvent | { type: string; [key: string]: any };
+type IncomingMessage = UserLocationEvent | { type: "CHAT_RESPONSE"; payload: { answer: string; conversationId?: string } } | { type: "CHAT_ERROR"; payload: { message: string; conversationId?: string } } | { type: string; [key: string]: any };
 
 interface SocketContextType {
   socket: WebSocket | null;
   isConnected: boolean;
   sendLocation: (location: LocationPayload) => void;
   onUserLocation: (callback: (data: UserLocationEvent) => void) => () => void;
+  sendChatAsk: (question: string, conversationId?: string) => void;
+  onChatMessage: (callback: (data: any) => void) => () => void;
 }
 
 // ─── CONTEXT ──────────────────────────────────────────────
@@ -39,6 +41,8 @@ const SocketContext = createContext<SocketContextType>({
   isConnected: false,
   sendLocation: () => {},
   onUserLocation: () => () => {},
+  sendChatAsk: () => {},
+  onChatMessage: () => () => {},
 });
 
 const WS_URL = process.env.EXPO_PUBLIC_WEBSOCKET_URL || "wss://websocket-backend-9p0o.onrender.com";
@@ -55,6 +59,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   // Store admin callbacks for USER_LOCATION events
   const userLocationListeners = useRef<Set<(data: UserLocationEvent) => void>>(new Set());
+  const chatListeners = useRef<Set<(data: any) => void>>(new Set());
 
   // ─── CONNECT ──────────────────────────────────────────
 
@@ -99,6 +104,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           if (data.type === "USER_LOCATION") {
             for (const listener of userLocationListeners.current) {
               listener(data as UserLocationEvent);
+            }
+          } else if (data.type === "CHAT_RESPONSE" || data.type === "CHAT_ERROR") {
+            for (const listener of chatListeners.current) {
+              listener(data);
             }
           }
         } catch (err) {
@@ -155,12 +164,41 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     ws.send(message);
   }, []);
 
+  // ─── SEND CHAT (for USER role) ─────────────────────────
+  
+  const sendChatAsk = useCallback((question: string, conversationId?: string) => {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("[WebSocket] Cannot send CHAT_ASK. Not connected.");
+      return;
+    }
+
+    const message = JSON.stringify({
+      type: "CHAT_ASK",
+      payload: {
+        question,
+        conversationId,
+      },
+    });
+
+    ws.send(message);
+  }, []);
+
   // ─── SUBSCRIBE TO USER_LOCATION (for ADMIN role) ──────
 
   const onUserLocation = useCallback((callback: (data: UserLocationEvent) => void) => {
     userLocationListeners.current.add(callback);
     return () => {
       userLocationListeners.current.delete(callback);
+    };
+  }, []);
+
+  // ─── SUBSCRIBE TO CHAT MESSAGES ───────────────────────
+
+  const onChatMessage = useCallback((callback: (data: any) => void) => {
+    chatListeners.current.add(callback);
+    return () => {
+      chatListeners.current.delete(callback);
     };
   }, []);
 
@@ -180,7 +218,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [connectWebSocket]);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected, sendLocation, onUserLocation }}>
+    <SocketContext.Provider value={{ socket, isConnected, sendLocation, onUserLocation, sendChatAsk, onChatMessage }}>
       {children}
     </SocketContext.Provider>
   );

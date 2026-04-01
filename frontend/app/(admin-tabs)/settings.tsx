@@ -13,15 +13,17 @@ import { StatusBar } from "expo-status-bar";
 
 const COLORS = {
   primary: "#21100B",
+  accent: "#38302E",
   secondary: "#8C7D79",
-  accent: "#8C7D79",
   error: "#D93636",
   success: "#10B981",
   background: "#F5F1EE",
   surface: "#FFFFFF",
   text: "#1A1818",
   textLight: "#4A4341",
+  textMuted: "#8C7D79",
   white: "#FFFFFF",
+  border: "#EDE7E3",
 };
 
 const GENERAL_SETTINGS = [
@@ -167,9 +169,10 @@ export default function SettingsScreen() {
           item.type === "navigate" && console.log("Navigate to", item.id)
         }
         disabled={item.type === "switch"}
+        activeOpacity={0.7}
       >
         <View
-          style={[styles.settingIcon, { backgroundColor: `${item.color}15` }]}
+          style={[styles.settingIcon, { backgroundColor: `${item.color}12` }]}
         >
           <MaterialCommunityIcons
             name={item.icon as any}
@@ -191,20 +194,20 @@ export default function SettingsScreen() {
           <MaterialCommunityIcons
             name="chevron-right"
             size={22}
-            color={COLORS.textLight}
+            color={COLORS.textMuted}
           />
         )}
       </TouchableOpacity>
-      {!isLast && <Divider />}
+      {!isLast && <Divider style={styles.divider} />}
     </React.Fragment>
   );
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
           <Text style={styles.headerTitle}>Settings</Text>
           <Text style={styles.headerSubtitle}>
             Manage your admin preferences
@@ -271,6 +274,7 @@ export default function SettingsScreen() {
                   ],
                 )
               }
+              activeOpacity={0.7}
             >
               <View
                 style={[styles.settingIcon, { backgroundColor: "#FEE2E2" }]}
@@ -283,7 +287,7 @@ export default function SettingsScreen() {
               </View>
               <Text style={styles.dangerText}>Clear System Cache</Text>
             </TouchableOpacity>
-            <Divider />
+            <Divider style={styles.divider} />
             <TouchableOpacity
               style={styles.dangerItem}
               onPress={() =>
@@ -296,6 +300,7 @@ export default function SettingsScreen() {
                   ],
                 )
               }
+              activeOpacity={0.7}
             >
               <View
                 style={[styles.settingIcon, { backgroundColor: "#FEE2E2" }]}
@@ -334,13 +339,15 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.text,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 4,
+    fontWeight: "500",
   },
   section: {
     paddingHorizontal: 20,
@@ -348,14 +355,19 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.text,
     marginBottom: 12,
+    letterSpacing: -0.2,
   },
   settingsCard: {
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
     overflow: "hidden",
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   settingItem: {
     flexDirection: "row",
@@ -363,9 +375,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
@@ -375,13 +387,16 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
     color: COLORS.text,
   },
   settingValue: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 2,
+  },
+  divider: {
+    backgroundColor: COLORS.border,
   },
   dangerCard: {
     borderWidth: 1,
@@ -394,7 +409,7 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
     color: COLORS.error,
   },
   appInfo: {
@@ -403,12 +418,12 @@ const styles = StyleSheet.create({
   },
   appVersion: {
     fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.textLight,
+    fontWeight: "700",
+    color: COLORS.textMuted,
   },
   appCopyright: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 4,
   },
 });

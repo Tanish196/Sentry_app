@@ -15,16 +15,20 @@ import { StatusBar } from "expo-status-bar";
 import { useAuth } from "../../store/AuthContext";
 
 const COLORS = {
+  headerDark: "#21100B",
+  headerMid: "#38302E",
   primary: "#21100B",
+  accent: "#38302E",
   secondary: "#8C7D79",
-  accent: "#8C7D79",
   error: "#D93636",
   success: "#10B981",
   background: "#F5F1EE",
   surface: "#FFFFFF",
   text: "#1A1818",
   textLight: "#4A4341",
+  textMuted: "#8C7D79",
   white: "#FFFFFF",
+  border: "#EDE7E3",
 };
 
 const ADMIN_MENU = [
@@ -91,12 +95,18 @@ export default function AdminProfileScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <LinearGradient
-          colors={["#21100B", "#4A4341"]}
-          style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}
+          colors={[COLORS.headerDark, COLORS.headerMid]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 16 }]}
         >
+          {/* Decorative blobs */}
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
+
           <View style={styles.profileSection}>
             <View style={styles.avatarContainer}>
               <Avatar.Image
@@ -151,11 +161,13 @@ export default function AdminProfileScreen() {
         <View style={styles.section}>
           <Card style={styles.loginCard}>
             <Card.Content style={styles.loginContent}>
-              <MaterialCommunityIcons
-                name="login"
-                size={24}
-                color={COLORS.success}
-              />
+              <View style={styles.loginIconBg}>
+                <MaterialCommunityIcons
+                  name="login"
+                  size={24}
+                  color={COLORS.success}
+                />
+              </View>
               <View style={styles.loginInfo}>
                 <Text style={styles.loginTitle}>Last Login</Text>
                 <Text style={styles.loginValue}>
@@ -172,11 +184,11 @@ export default function AdminProfileScreen() {
           <Card style={styles.menuCard}>
             {ADMIN_MENU.map((item, index) => (
               <React.Fragment key={item.id}>
-                <TouchableOpacity style={styles.menuItem}>
+                <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
                   <View
                     style={[
                       styles.menuIcon,
-                      { backgroundColor: `${item.color}15` },
+                      { backgroundColor: `${item.color}12` },
                     ]}
                   >
                     <MaterialCommunityIcons
@@ -189,10 +201,10 @@ export default function AdminProfileScreen() {
                   <MaterialCommunityIcons
                     name="chevron-right"
                     size={22}
-                    color={COLORS.textLight}
+                    color={COLORS.textMuted}
                   />
                 </TouchableOpacity>
-                {index < ADMIN_MENU.length - 1 && <Divider />}
+                {index < ADMIN_MENU.length - 1 && <Divider style={styles.menuDivider} />}
               </React.Fragment>
             ))}
           </Card>
@@ -204,11 +216,11 @@ export default function AdminProfileScreen() {
           <Card style={styles.menuCard}>
             {QUICK_SETTINGS.map((item, index) => (
               <React.Fragment key={item.id}>
-                <TouchableOpacity style={styles.menuItem}>
+                <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
                   <View
                     style={[
                       styles.menuIcon,
-                      { backgroundColor: `${item.color}15` },
+                      { backgroundColor: `${item.color}12` },
                     ]}
                   >
                     <MaterialCommunityIcons
@@ -221,10 +233,10 @@ export default function AdminProfileScreen() {
                   <MaterialCommunityIcons
                     name="chevron-right"
                     size={22}
-                    color={COLORS.textLight}
+                    color={COLORS.textMuted}
                   />
                 </TouchableOpacity>
-                {index < QUICK_SETTINGS.length - 1 && <Divider />}
+                {index < QUICK_SETTINGS.length - 1 && <Divider style={styles.menuDivider} />}
               </React.Fragment>
             ))}
           </Card>
@@ -232,7 +244,7 @@ export default function AdminProfileScreen() {
 
         {/* Logout Button */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
             <MaterialCommunityIcons
               name="logout"
               size={22}
@@ -258,6 +270,26 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: "hidden",
+    position: "relative",
+  },
+  blob1: {
+    position: "absolute",
+    top: -40,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  blob2: {
+    position: "absolute",
+    bottom: 10,
+    left: -60,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
   },
   profileSection: {
     alignItems: "center",
@@ -268,7 +300,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     borderWidth: 4,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderColor: "rgba(255,255,255,0.2)",
   },
   adminBadge: {
     position: "absolute",
@@ -285,38 +317,45 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.white,
     marginTop: 12,
+    letterSpacing: -0.3,
   },
   userEmail: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.7)",
     marginTop: 4,
+    fontWeight: "500",
   },
   roleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     marginTop: 12,
     gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   roleText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.white,
+    letterSpacing: 0.5,
   },
   statsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     marginHorizontal: 20,
     marginTop: 24,
-    borderRadius: 16,
+    borderRadius: 18,
     paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
   },
   statItem: {
     alignItems: "center",
@@ -324,17 +363,19 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.white,
+    letterSpacing: -0.3,
   },
   statLabel: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.7)",
     marginTop: 4,
+    fontWeight: "500",
   },
   statDivider: {
     width: 1,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
   section: {
     paddingHorizontal: 20,
@@ -342,16 +383,29 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.text,
     marginBottom: 12,
+    letterSpacing: -0.2,
   },
   loginCard: {
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   loginContent: {
     flexDirection: "row",
+    alignItems: "center",
+  },
+  loginIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: `${COLORS.success}12`,
+    justifyContent: "center",
     alignItems: "center",
   },
   loginInfo: {
@@ -359,18 +413,22 @@ const styles = StyleSheet.create({
   },
   loginTitle: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.text,
   },
   loginValue: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   menuCard: {
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
     overflow: "hidden",
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   menuItem: {
     flexDirection: "row",
@@ -378,9 +436,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
@@ -388,8 +446,11 @@ const styles = StyleSheet.create({
   menuTitle: {
     flex: 1,
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
     color: COLORS.text,
+  },
+  menuDivider: {
+    backgroundColor: COLORS.border,
   },
   logoutButton: {
     flexDirection: "row",
@@ -397,18 +458,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#FEE2E2",
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     gap: 8,
+    borderWidth: 1,
+    borderColor: "#FECACA",
   },
   logoutText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.error,
   },
   version: {
     textAlign: "center",
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginVertical: 24,
+    fontWeight: "500",
   },
 });

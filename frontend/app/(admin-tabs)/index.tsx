@@ -18,16 +18,21 @@ import { useAuth } from "../../store/AuthContext";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const COLORS = {
+  headerDark: "#21100B",
+  headerMid: "#38302E",
   primary: "#21100B",
+  accent: "#38302E",
   secondary: "#8C7D79",
-  accent: "#8C7D79",
   error: "#D93636",
   success: "#10B981",
+  warning: "#F59E0B",
   background: "#F5F1EE",
   surface: "#FFFFFF",
   text: "#1A1818",
   textLight: "#4A4341",
+  textMuted: "#8C7D79",
   white: "#FFFFFF",
+  border: "#EDE7E3",
 };
 
 const STATS = [
@@ -144,20 +149,28 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <LinearGradient
-          colors={["#21100B", "#4A4341"]}
-          style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}
+          colors={[COLORS.headerDark, COLORS.headerMid]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 16 }]}
         >
+          {/* Decorative blobs */}
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
+
           <View style={styles.headerTop}>
             <View style={styles.userInfo}>
-              <Avatar.Image
-                size={48}
-                source={{
-                  uri: user?.avatar || "https://avatar.iran.liara.run/public/1",
-                }}
-              />
+              <View style={styles.avatarRing}>
+                <Avatar.Image
+                  size={48}
+                  source={{
+                    uri: user?.avatar || "https://avatar.iran.liara.run/public/1",
+                  }}
+                />
+              </View>
               <View style={styles.greeting}>
                 <Text style={styles.greetingText}>Admin Dashboard</Text>
                 <Text style={styles.userName}>
@@ -253,11 +266,12 @@ export default function AdminDashboard() {
                 <TouchableOpacity
                   key={action.id}
                   style={styles.quickActionItem}
+                  activeOpacity={0.7}
                 >
                   <View
                     style={[
                       styles.quickActionIcon,
-                      { backgroundColor: `${action.color}15` },
+                      { backgroundColor: `${action.color}12` },
                     ]}
                   >
                     <MaterialCommunityIcons
@@ -293,7 +307,7 @@ export default function AdminDashboard() {
                   <View
                     style={[
                       styles.activityIcon,
-                      { backgroundColor: `${activity.color}15` },
+                      { backgroundColor: `${activity.color}12` },
                     ]}
                   >
                     <MaterialCommunityIcons
@@ -342,7 +356,7 @@ export default function AdminDashboard() {
                     <View
                       style={[
                         styles.statusDot,
-                        { backgroundColor: COLORS.accent },
+                        { backgroundColor: COLORS.success },
                       ]}
                     />
                     <Text style={styles.statusLabel}>API</Text>
@@ -368,6 +382,26 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: "hidden",
+    position: "relative",
+  },
+  blob1: {
+    position: "absolute",
+    top: -40,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  blob2: {
+    position: "absolute",
+    bottom: 10,
+    left: -60,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
   },
   headerTop: {
     flexDirection: "row",
@@ -379,27 +413,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  avatarRing: {
+    padding: 2,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
   greeting: {
     marginLeft: 12,
   },
   greetingText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.6)",
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    fontWeight: "600",
   },
   userName: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.white,
+    letterSpacing: -0.3,
   },
   notificationBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   notificationBadge: {
     position: "absolute",
@@ -418,14 +462,16 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: COLORS.white,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.7)",
     marginTop: 4,
+    fontWeight: "500",
   },
   content: {
     paddingTop: 20,
@@ -442,13 +488,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.text,
     marginBottom: 12,
+    letterSpacing: -0.3,
   },
   seeAll: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.primary,
   },
   statsGrid: {
@@ -459,8 +506,12 @@ const styles = StyleSheet.create({
   statCard: {
     width: "48%",
     marginBottom: 12,
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   statContent: {
     alignItems: "center",
@@ -469,20 +520,22 @@ const styles = StyleSheet.create({
   statIcon: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "800",
     color: COLORS.text,
+    letterSpacing: -0.5,
   },
   statTitle: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 4,
+    fontWeight: "500",
   },
   trendContainer: {
     flexDirection: "row",
@@ -492,7 +545,7 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   quickActions: {
     flexDirection: "row",
@@ -505,21 +558,25 @@ const styles = StyleSheet.create({
   quickActionIcon: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
   },
   quickActionLabel: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.text,
     textAlign: "center",
   },
   activityCard: {
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
     padding: 4,
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   activityItem: {
     flexDirection: "row",
@@ -528,12 +585,12 @@ const styles = StyleSheet.create({
   },
   activityBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: COLORS.border,
   },
   activityIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -548,16 +605,21 @@ const styles = StyleSheet.create({
   },
   activityUser: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   activityTime: {
     fontSize: 11,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
+    fontWeight: "500",
   },
   statusCard: {
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: "#21100B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   statusRow: {
     flexDirection: "row",
@@ -574,11 +636,12 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
+    fontWeight: "500",
   },
   statusValue: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.text,
     marginTop: 2,
   },
