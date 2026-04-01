@@ -223,39 +223,45 @@ export default function AdminDashboard() {
               {STATS.map((stat) => (
                 <Card key={stat.id} style={styles.statCard}>
                   <Card.Content style={styles.statContent}>
-                    <View
-                      style={[
-                        styles.statIcon,
-                        { backgroundColor: `${stat.color}15` },
-                      ]}
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={stat.id === "2" ? () => router.push("/(admin-tabs)/map") : undefined}
+                      style={{ alignItems: "center", width: "100%" }}
                     >
-                      <stat.icon
-                        size={24}
-                        color={stat.color}
-                        strokeWidth={2}
-                      />
-                    </View>
-                    <Text style={styles.statValue}>{stat.value}</Text>
-                    <Text style={styles.statTitle}>{stat.title}</Text>
-                    <View style={styles.trendContainer}>
-                      {stat.trend.startsWith("+") ? (
-                        <TrendingUp size={14} color={COLORS.success} />
-                      ) : (
-                        <TrendingDown size={14} color={COLORS.error} />
-                      )}
-                      <Text
+                      <View
                         style={[
-                          styles.trendText,
-                          {
-                            color: stat.trend.startsWith("+")
-                              ? COLORS.success
-                              : COLORS.error,
-                          },
+                          styles.statIcon,
+                          { backgroundColor: `${stat.color}15` },
                         ]}
                       >
-                        {stat.trend}
-                      </Text>
-                    </View>
+                        <stat.icon
+                          size={24}
+                          color={stat.color}
+                          strokeWidth={2}
+                        />
+                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statTitle}>{stat.title}</Text>
+                      <View style={styles.trendContainer}>
+                        {stat.trend.startsWith("+") ? (
+                          <TrendingUp size={14} color={COLORS.success} />
+                        ) : (
+                          <TrendingDown size={14} color={COLORS.error} />
+                        )}
+                        <Text
+                          style={[
+                            styles.trendText,
+                            {
+                              color: stat.trend.startsWith("+")
+                                ? COLORS.success
+                                : COLORS.error,
+                            },
+                          ]}
+                        >
+                          {stat.trend}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   </Card.Content>
                 </Card>
               ))}

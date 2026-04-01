@@ -1,11 +1,22 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Bell,
+  Mail,
+  AlertTriangle,
+  Languages,
+  Trash2,
+  Database,
+  ChevronRight,
+  LogOut,
+} from "lucide-react-native";
+import { router } from "expo-router";
+import { useAuth } from "../../store/AuthContext";
 import React, { useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Card, Divider, Switch, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,135 +41,59 @@ const GENERAL_SETTINGS = [
   {
     id: "notifications",
     title: "Push Notifications",
-    icon: "bell-outline",
+    icon: Bell,
     color: "#F59E0B",
     type: "switch",
   },
   {
     id: "email",
     title: "Email Notifications",
-    icon: "email-outline",
+    icon: Mail,
     color: "#10B981",
     type: "switch",
   },
   {
     id: "alerts",
     title: "SOS Alerts",
-    icon: "alert-circle-outline",
+    icon: AlertTriangle,
     color: "#EF4444",
     type: "switch",
   },
   {
     id: "language",
     title: "Language",
-    icon: "translate",
+    icon: Languages,
     color: "#8B5CF6",
     type: "navigate",
     value: "English",
   },
-  {
-    id: "timezone",
-    title: "Timezone",
-    icon: "clock-outline",
-    color: "#0EA5E9",
-    type: "navigate",
-    value: "IST (UTC+5:30)",
-  },
-];
-
-const SECURITY_SETTINGS = [
-  {
-    id: "2fa",
-    title: "Two-Factor Authentication",
-    icon: "shield-lock-outline",
-    color: "#10B981",
-    type: "switch",
-  },
-  {
-    id: "password",
-    title: "Change Password",
-    icon: "lock-outline",
-    color: "#1E40AF",
-    type: "navigate",
-  },
-  {
-    id: "sessions",
-    title: "Active Sessions",
-    icon: "devices",
-    color: "#8B5CF6",
-    type: "navigate",
-    value: "3 devices",
-  },
-  {
-    id: "audit",
-    title: "Audit Logs",
-    icon: "history",
-    color: "#F59E0B",
-    type: "navigate",
-  },
-];
-
-const SYSTEM_SETTINGS = [
-  {
-    id: "backup",
-    title: "Data Backup",
-    icon: "cloud-upload-outline",
-    color: "#0EA5E9",
-    type: "navigate",
-    value: "Last: 2 hours ago",
-  },
-  {
-    id: "maintenance",
-    title: "Maintenance Mode",
-    icon: "tools",
-    color: "#EF4444",
-    type: "switch",
-  },
-  {
-    id: "api",
-    title: "API Settings",
-    icon: "api",
-    color: "#10B981",
-    type: "navigate",
-  },
-  {
-    id: "integrations",
-    title: "Integrations",
-    icon: "connection",
-    color: "#8B5CF6",
-    type: "navigate",
-    value: "5 active",
-  },
 ];
 
 export default function SettingsScreen() {
+  const { logout } = useAuth();
   const [switches, setSwitches] = useState<Record<string, boolean>>({
     notifications: true,
     email: true,
     alerts: true,
-    "2fa": false,
-    maintenance: false,
   });
   const insets = useSafeAreaInsets();
 
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout from admin panel?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/(auth)/admin-login");
+        },
+      },
+    ]);
+  };
+
   const toggleSwitch = (id: string) => {
-    if (id === "maintenance") {
-      Alert.alert(
-        "Maintenance Mode",
-        switches[id]
-          ? "Are you sure you want to disable maintenance mode?"
-          : "Enabling maintenance mode will restrict user access. Continue?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Confirm",
-            onPress: () => setSwitches({ ...switches, [id]: !switches[id] }),
-          },
-        ],
-      );
-    } else {
-      setSwitches({ ...switches, [id]: !switches[id] });
-    }
+    setSwitches({ ...switches, [id]: !switches[id] });
   };
 
   const renderSettingItem = (item: any, index: number, isLast: boolean) => (
@@ -174,10 +109,10 @@ export default function SettingsScreen() {
         <View
           style={[styles.settingIcon, { backgroundColor: `${item.color}12` }]}
         >
-          <MaterialCommunityIcons
-            name={item.icon as any}
-            size={22}
+          <item.icon
+            size={20}
             color={item.color}
+            strokeWidth={2}
           />
         </View>
         <View style={styles.settingInfo}>
@@ -191,9 +126,8 @@ export default function SettingsScreen() {
             color={COLORS.primary}
           />
         ) : (
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={22}
+          <ChevronRight
+            size={20}
             color={COLORS.textMuted}
           />
         )}
@@ -228,34 +162,6 @@ export default function SettingsScreen() {
           </Card>
         </View>
 
-        {/* Security Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
-          <Card style={styles.settingsCard}>
-            {SECURITY_SETTINGS.map((item, index) =>
-              renderSettingItem(
-                item,
-                index,
-                index === SECURITY_SETTINGS.length - 1,
-              ),
-            )}
-          </Card>
-        </View>
-
-        {/* System Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>System</Text>
-          <Card style={styles.settingsCard}>
-            {SYSTEM_SETTINGS.map((item, index) =>
-              renderSettingItem(
-                item,
-                index,
-                index === SYSTEM_SETTINGS.length - 1,
-              ),
-            )}
-          </Card>
-        </View>
-
         {/* Danger Zone */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: COLORS.error }]}>
@@ -279,10 +185,10 @@ export default function SettingsScreen() {
               <View
                 style={[styles.settingIcon, { backgroundColor: "#FEE2E2" }]}
               >
-                <MaterialCommunityIcons
-                  name="delete-sweep"
-                  size={22}
+                <Trash2
+                  size={20}
                   color={COLORS.error}
+                  strokeWidth={2}
                 />
               </View>
               <Text style={styles.dangerText}>Clear System Cache</Text>
@@ -305,15 +211,31 @@ export default function SettingsScreen() {
               <View
                 style={[styles.settingIcon, { backgroundColor: "#FEE2E2" }]}
               >
-                <MaterialCommunityIcons
-                  name="database-remove"
-                  size={22}
+                <Database
+                  size={20}
                   color={COLORS.error}
+                  strokeWidth={2}
                 />
               </View>
               <Text style={styles.dangerText}>Reset Database</Text>
             </TouchableOpacity>
           </Card>
+        </View>
+
+        {/* Logout Section */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <LogOut
+              size={20}
+              color={COLORS.error}
+              strokeWidth={2.5}
+            />
+            <Text style={styles.logoutText}>Logout from Admin Panel</Text>
+          </TouchableOpacity>
         </View>
 
         {/* App Info */}
@@ -425,5 +347,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 4,
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEE2E2",
+    paddingVertical: 16,
+    borderRadius: 18,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    marginTop: 8,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.error,
   },
 });

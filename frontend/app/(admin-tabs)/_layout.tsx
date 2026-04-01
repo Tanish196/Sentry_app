@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { LayoutDashboard, Users, BarChart3, Settings, User } from "lucide-react-native";
+import { LayoutDashboard, Users, BarChart3, Settings, User, Map } from "lucide-react-native";
 import React, { useEffect } from "react";
 import {
   Dimensions,
@@ -109,9 +109,9 @@ function TabItem({ route, index, options, isFocused, navigation }: any) {
     switch (route.name) {
       case "index": return LayoutDashboard;
       case "users": return Users;
+      case "map": return Map;
       case "reports": return BarChart3;
       case "settings": return Settings;
-      case "profile": return User;
       default: return LayoutDashboard;
     }
   };
@@ -218,9 +218,9 @@ export default function AdminTabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
       <Tabs.Screen name="users" options={{ title: "Users" }} />
+      <Tabs.Screen name="map" options={{ title: "Map" }} />
       <Tabs.Screen name="reports" options={{ title: "Reports" }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>
   );
 }
