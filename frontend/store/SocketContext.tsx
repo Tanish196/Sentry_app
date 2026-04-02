@@ -37,6 +37,7 @@ interface LiveUsersCountEvent {
   type: "LIVE_USERS_COUNT";
   payload: {
     count: number;
+    activeUserIds?: string[];
   };
 }
 

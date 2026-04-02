@@ -31,36 +31,7 @@ const COLORS = {
 
 const TIME_FILTERS = ["Today", "This Week", "This Month", "This Year"];
 
-const OVERVIEW_STATS = [
-  {
-    label: "Total Tours",
-    value: "1,234",
-    change: "+12%",
-    icon: "map-marker-path",
-    color: COLORS.primary,
-  },
-  {
-    label: "Active Users",
-    value: "856",
-    change: "+8%",
-    icon: "account-check",
-    color: COLORS.success,
-  },
-  {
-    label: "SOS Alerts",
-    value: "23",
-    change: "-5%",
-    icon: "alert-circle",
-    color: COLORS.error,
-  },
-  {
-    label: "Revenue",
-    value: "₹12.4L",
-    change: "+18%",
-    icon: "currency-inr",
-    color: COLORS.secondary,
-  },
-];
+
 
 const REPORTS = [
   {
@@ -146,57 +117,7 @@ export default function ReportsScreen() {
           ))}
         </ScrollView>
 
-        {/* Overview Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <View style={styles.statsGrid}>
-            {OVERVIEW_STATS.map((stat, index) => (
-              <Card key={index} style={styles.statCard}>
-                <Card.Content style={styles.statContent}>
-                  <View
-                    style={[
-                      styles.statIcon,
-                      { backgroundColor: `${stat.color}12` },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={stat.icon as any}
-                      size={22}
-                      color={stat.color}
-                    />
-                  </View>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                  <View style={styles.changeContainer}>
-                    <MaterialCommunityIcons
-                      name={
-                        stat.change.startsWith("+") ? "arrow-up" : "arrow-down"
-                      }
-                      size={12}
-                      color={
-                        stat.change.startsWith("+")
-                          ? COLORS.success
-                          : COLORS.error
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.changeText,
-                        {
-                          color: stat.change.startsWith("+")
-                            ? COLORS.success
-                            : COLORS.error,
-                        },
-                      ]}
-                    >
-                      {stat.change}
-                    </Text>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
-          </View>
-        </View>
+
 
         {/* Chart Placeholder */}
         <View style={styles.section}>
@@ -344,55 +265,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: -0.3,
   },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  statCard: {
-    width: "48%",
-    marginBottom: 12,
-    borderRadius: 20,
-    elevation: 3,
-    shadowColor: "#21100B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-  },
-  statContent: {
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: COLORS.text,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  changeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-    gap: 2,
-  },
-  changeText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
+
   chartCard: {
     borderRadius: 20,
     elevation: 3,

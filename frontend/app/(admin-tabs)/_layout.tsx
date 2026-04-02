@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { LayoutDashboard, Users, BarChart3, Settings, User, Map } from "lucide-react-native";
+import { LayoutDashboard, Users, Settings, User, Map } from "lucide-react-native";
 import React, { useEffect } from "react";
 import {
   Dimensions,
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 const TAB_BAR_WIDTH = width * 0.92;
-const TAB_WIDTH = TAB_BAR_WIDTH / 5;
+const TAB_WIDTH = TAB_BAR_WIDTH / 4;
 const TAB_BAR_HEIGHT = 72;
 
 const COLORS = {
@@ -110,7 +110,6 @@ function TabItem({ route, index, options, isFocused, navigation }: any) {
       case "index": return LayoutDashboard;
       case "users": return Users;
       case "map": return Map;
-      case "reports": return BarChart3;
       case "settings": return Settings;
       default: return LayoutDashboard;
     }
@@ -219,7 +218,6 @@ export default function AdminTabsLayout() {
       <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
       <Tabs.Screen name="users" options={{ title: "Users" }} />
       <Tabs.Screen name="map" options={{ title: "Map" }} />
-      <Tabs.Screen name="reports" options={{ title: "Reports" }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />
     </Tabs>
   );
