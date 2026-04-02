@@ -5,6 +5,7 @@ import {
   LogOut,
   Navigation,
   Shield,
+  Siren,
   TrendingUp,
   UserPlus,
   Users,
@@ -118,7 +119,7 @@ function getActivityIcon(type: ActivityItem["type"]) {
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const { onUserActivity, onLiveUsersCount, isConnected } = useSocket();
+  const { onUserActivity, onLiveUsersCount, onSOSAlert, isConnected } = useSocket();
   const insets = useSafeAreaInsets();
 
   // ─── STATE ────────────────────────────────────────────────
@@ -128,6 +129,7 @@ export default function AdminDashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [liveUsers, setLiveUsers] = useState<number>(0);
+  const [activeSOSCount, setActiveSOSCount] = useState<number>(0);
 
 
   // Animations
@@ -250,6 +252,54 @@ export default function AdminDashboard() {
     return unsubscribe;
   }, [onUserActivity, shakeBell]);
 
+  // ─── REAL-TIME: SOS ALERTS ────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = onSOSAlert((event) => {
+      if (event.type === "SOS_ALERT") {
+        const { alertId, userName, status } = event.payload;
+
+        const sosActivity: ActivityItem = {
+          id: `sos-${alertId}`,
+          type: "SOS",
+          action: `EMERGENCY SOS from ${userName}`,
+          user: userName,
+          timestamp: event.payload.timestamp || new Date().toISOString(),
+          read: false,
+        };
+
+        setActivities((prev) => [sosActivity, ...prev].slice(0, 50));
+        setNotifications((prev) => [sosActivity, ...prev].slice(0, 30));
+        setUnreadCount((prev) => prev + 1);
+        setActiveSOSCount((prev) => prev + 1);
+        shakeBell();
+
+        console.log(`[Admin] SOS ALERT received: ${alertId} from ${userName}`);
+      } else if (event.type === "SOS_STATUS_UPDATE") {
+        const { alertId, status } = event.payload;
+
+        if (status === "RESOLVED" || status === "CANCELLED") {
+          setActiveSOSCount((prev) => Math.max(0, prev - 1));
+        }
+
+        const statusActivity: ActivityItem = {
+          id: `sos-update-${alertId}-${Date.now()}`,
+          type: "SOS",
+          action: `SOS Alert ${status.toLowerCase()}`,
+          user: "System",
+          timestamp: event.payload.timestamp || new Date().toISOString(),
+          read: false,
+        };
+
+        setActivities((prev) => [statusActivity, ...prev].slice(0, 50));
+        setNotifications((prev) => [statusActivity, ...prev].slice(0, 30));
+        setUnreadCount((prev) => prev + 1);
+        shakeBell();
+      }
+    });
+
+    return unsubscribe;
+  }, [onSOSAlert, shakeBell]);
+
   // ─── ENTRY ANIMATION ──────────────────────────────────────
   useEffect(() => {
     if (!user) {
@@ -322,6 +372,13 @@ export default function AdminDashboard() {
       value: liveUsers.toString(),
       icon: Navigation,
       color: "#10B981",
+    },
+    {
+      id: "3",
+      title: "Active SOS",
+      value: activeSOSCount.toString(),
+      icon: Siren,
+      color: activeSOSCount > 0 ? COLORS.error : COLORS.secondary,
     },
   ];
 

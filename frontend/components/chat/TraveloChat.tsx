@@ -114,7 +114,7 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
   useEffect(() => {
     const unsubscribe = onChatMessage((data) => {
       setIsTyping(false);
-      
+
       if (data.type === 'CHAT_RESPONSE') {
         const botReply: ChatMessage = {
           id: `bot_${Date.now()}`,
@@ -126,7 +126,7 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
         setShowChips(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         scrollToBottom();
-        
+
         // Mark last user msg as seen
         setMessages((prev) => {
           const newMessages = [...prev];
@@ -331,10 +331,6 @@ const TraveloChat: React.FC<TraveloChatProps> = ({ visible, onClose }) => {
                       <Sparkles size={10} color="#FFC107" strokeWidth={2.5} />
                       <Text style={styles.aiBadgeText}>AI</Text>
                     </View>
-                  </View>
-                  <View style={styles.onlineStatusPill}>
-                    <View style={styles.onlinePulse} />
-                    <Text style={styles.headerSubtitle}>Online · Ready to help</Text>
                   </View>
                 </View>
               </View>

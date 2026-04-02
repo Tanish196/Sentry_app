@@ -232,7 +232,7 @@ export default function MapScreen() {
 
             // Handle rerouting if needed
             if (navState.shouldReroute && selectedPlace) {
-              console.log('🔄 User off route, rerouting...');
+              console.log('User off route, rerouting...');
               // Trigger reroute
               getDirections(coord, selectedPlace.coordinate, travelMode)
                 .then((newRoute) => {
@@ -295,7 +295,7 @@ export default function MapScreen() {
   useEffect(() => {
     if (!userLocation) return;
     
-    // 🚦 THROTTLE: Only search if moved > 500m or if filter changed
+    // THROTTLE: Only search if moved > 500m or if filter changed
     if (lastSearchLocation.current) {
       const dx = (userLocation.latitude - lastSearchLocation.current.latitude) * 111000;
       const dy = (userLocation.longitude - lastSearchLocation.current.longitude) * 111000;
@@ -479,7 +479,7 @@ export default function MapScreen() {
     setIsPanic((p) => {
       if (!p) {
         Alert.alert(
-          "🚨 Panic Mode Activated",
+          "Panic Mode Activated",
           "Your location is being shared with emergency contacts.",
         );
       }
@@ -539,7 +539,7 @@ export default function MapScreen() {
     setFollowUser(true); // Auto-follow during navigation
 
     Alert.alert(
-      '🧭 Navigation Started',
+      'Navigation Started',
       `Follow the ${travelMode} directions. You'll receive turn-by-turn guidance.`,
       [{ text: 'OK' }]
     );

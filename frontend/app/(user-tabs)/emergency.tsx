@@ -132,7 +132,7 @@ const LogItem = ({ entry }: { entry: DeliveryLogEntry }) => {
 
 export default function EmergencyScreen() {
   const { user } = useAuth();
-  const { isConnected: wsConnected, sendLocation } = useSocket();
+  const { isConnected: wsConnected, sendLocation, sendSOS, resolveSOSBackend, onSOSAlert } = useSocket();
   const insets = useSafeAreaInsets();
   const [sosActive, setSosActive] = useState(false);
   const [familyContacts, setFamilyContacts] = useState<FamilyContact[]>([]);
@@ -148,6 +148,8 @@ export default function EmergencyScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView>(null);
   const [isSharingLocation, setIsSharingLocation] = useState(false);
+  const [backendAlertId, setBackendAlertId] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<string | null>(null);
 
   // ─── LOAD PERSISTED CONTACTS ───────────────────────
   useEffect(() => {
@@ -212,6 +214,34 @@ export default function EmergencyScreen() {
     return unsubscribe;
   }, []);
 
+  // ─── SUBSCRIBE TO BACKEND SOS EVENTS ───────────────
+  useEffect(() => {
+    const unsubscribe = onSOSAlert((event) => {
+      if (event.type === "SOS_CONFIRMED") {
+        const { alertId, status, message } = event.payload;
+        setBackendAlertId(alertId);
+        setBackendStatus(status);
+        console.log(`[SOS Backend] Confirmed: ${alertId} — ${message}`);
+      } else if (event.type === "SOS_STATUS_UPDATE") {
+        const { alertId, status } = event.payload;
+        setBackendStatus(status);
+        console.log(`[SOS Backend] Status update: ${alertId} → ${status}`);
+        
+        if (status === "RESOLVED") {
+          // Backend confirmed resolution
+          setTimeout(() => {
+            setSosActive(false);
+            setShowDispatchModal(false);
+            setAlertPayload(null);
+            setBackendAlertId(null);
+            setBackendStatus(null);
+          }, 1200);
+        }
+      }
+    });
+    return unsubscribe;
+  }, [onSOSAlert]);
+
   // ─── SOS HANDLER ───────────────────────────────────
 
   const handleSOS = () => {
@@ -258,8 +288,44 @@ export default function EmergencyScreen() {
           heading: loc.coords.heading,
           source: "GPS",
         });
+
+        // ── Dispatch SOS to backend via WebSocket ──
+        let address: string | undefined;
+        try {
+          const geocode = await Location.reverseGeocodeAsync({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+          if (geocode.length > 0) {
+            const place = geocode[0];
+            address = [place.name, place.street, place.city, place.region]
+              .filter(Boolean)
+              .join(", ");
+          }
+        } catch {}
+
+        sendSOS({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          address,
+          contacts: familyContacts.map((c) => ({
+            name: c.name,
+            phone: c.phone,
+            relationship: c.relationship,
+          })),
+          userName: user?.name || "Sentry User",
+        });
       } catch (locErr) {
         console.warn("[SOS] Failed to send location via WebSocket:", locErr);
+        // Still dispatch SOS without location
+        sendSOS({
+          contacts: familyContacts.map((c) => ({
+            name: c.name,
+            phone: c.phone,
+            relationship: c.relationship,
+          })),
+          userName: user?.name || "Sentry User",
+        });
       }
     } catch (err) {
       console.error("[SOS] Dispatch error:", err);
@@ -270,18 +336,32 @@ export default function EmergencyScreen() {
 
   const cancelSOS = () => {
     sosService.clear();
+    // Notify backend of cancellation
+    if (backendAlertId) {
+      resolveSOSBackend(backendAlertId);
+    }
     setSosActive(false);
     setShowDispatchModal(false);
     setAlertPayload(null);
+    setBackendAlertId(null);
+    setBackendStatus(null);
   };
 
   const resolveSOS = async () => {
     await sosService.resolve();
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    // Resolve on backend too
+    if (backendAlertId) {
+      resolveSOSBackend(backendAlertId);
+    }
+    
     setTimeout(() => {
       setSosActive(false);
       setShowDispatchModal(false);
       setAlertPayload(null);
+      setBackendAlertId(null);
+      setBackendStatus(null);
     }, 1200);
   };
 
@@ -655,24 +735,30 @@ export default function EmergencyScreen() {
       <CustomAlertModal config={alertConfig} colors={COLORS} />
 
       {/* ─── SOS DISPATCH MODAL ──────────────────────── */}
-      <Modal visible={showDispatchModal} transparent animationType="slide" onRequestClose={cancelSOS}>
+      <Modal visible={showDispatchModal} transparent animationType="slide" onRequestClose={cancelSOS} statusBarTranslucent={true}>
         <View style={dispatchStyles.fullscreen}>
           <LinearGradient
-            colors={["#1A1818", "#21100B"]}
+            colors={["#FFFFFF", "#FDFBFA", "#F5F1EE"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={[dispatchStyles.container, { paddingTop: insets.top + 20 }]}
           >
-            {/* Design Decorations */}
+            {/* Top glass handle & deco */}
+            <View style={dispatchStyles.topHandle} />
             <View style={dispatchStyles.headerDecoCircle} />
 
             {/* Header Content */}
             <View style={dispatchStyles.header}>
               <View style={dispatchStyles.shieldContainer}>
-                <View style={[dispatchStyles.shieldBg, { borderColor: COLORS.error + '40' }]}>
-                  <Radio size={28} color={COLORS.error} />
+                <View style={[dispatchStyles.shieldBg, { borderColor: "rgba(255, 54, 54, 0.4)" }]}>
+                  <Radio size={28} color="#FF3636" />
                 </View>
               </View>
               <View style={dispatchStyles.headerTextContainer}>
-                <Text style={dispatchStyles.headerTitle}>SOS DISPATCH</Text>
+                <View style={dispatchStyles.titleRow}>
+                  <AlertTriangle size={16} color="#FF3636" />
+                  <Text style={dispatchStyles.headerTitle}>SOS DISPATCH</Text>
+                </View>
                 <Text style={dispatchStyles.headerSubtitle}>Real-time Emergency Routing</Text>
               </View>
               <View style={dispatchStyles.headerRight}>
@@ -687,7 +773,7 @@ export default function EmergencyScreen() {
                 <>
                   <View style={dispatchStyles.alertRow}>
                     <View style={dispatchStyles.alertLabel}>
-                      <ShieldAlert size={14} color={COLORS.textMuted} />
+                      <ShieldAlert size={14} color="#FF6B6B" />
                       <Text style={dispatchStyles.alertLabelText}>ALERT ID</Text>
                     </View>
                     <Text style={dispatchStyles.alertValue}>{alertPayload.alertId}</Text>
@@ -697,7 +783,7 @@ export default function EmergencyScreen() {
 
                   <View style={dispatchStyles.alertRow}>
                     <View style={dispatchStyles.alertLabel}>
-                      <Clock size={14} color={COLORS.textMuted} />
+                      <Clock size={14} color="#FF6B6B" />
                       <Text style={dispatchStyles.alertLabelText}>TIMESTAMP</Text>
                     </View>
                     <Text style={dispatchStyles.alertValue}>
@@ -709,7 +795,7 @@ export default function EmergencyScreen() {
 
                   <View style={dispatchStyles.alertRow}>
                     <View style={dispatchStyles.alertLabel}>
-                      <MapPin size={14} color={COLORS.textMuted} />
+                      <MapPin size={14} color="#FF6B6B" />
                       <Text style={dispatchStyles.alertLabelText}>LOCATION</Text>
                     </View>
                     <Text style={dispatchStyles.alertValue} numberOfLines={2}>
@@ -724,7 +810,7 @@ export default function EmergencyScreen() {
 
                   <View style={dispatchStyles.alertRow}>
                     <View style={dispatchStyles.alertLabel}>
-                      <User size={14} color={COLORS.textMuted} />
+                      <User size={14} color="#FF6B6B" />
                       <Text style={dispatchStyles.alertLabelText}>CONTACTS</Text>
                     </View>
                     <Text style={dispatchStyles.alertValue}>
@@ -734,11 +820,13 @@ export default function EmergencyScreen() {
                 </>
               ) : (
                 <View style={dispatchStyles.preDispatch}>
-                  <AlertTriangle size={48} color={COLORS.error} />
+                  <View style={dispatchStyles.preDispatchIconWrapper}>
+                    <AlertTriangle size={42} color="#FF3636" strokeWidth={2} />
+                  </View>
                   <Text style={dispatchStyles.preDispatchTitle}>Ready to Dispatch</Text>
                   <Text style={dispatchStyles.preDispatchSubtitle}>
                     {familyContacts.length > 0
-                      ? `Alert will be sent to ${familyContacts.length} contact(s)`
+                      ? `Alert will be sent to ${familyContacts.length} contact(s) and emergency services`
                       : "No contacts saved — alert will go to Emergency Services (112)"}
                   </Text>
                 </View>
@@ -748,7 +836,7 @@ export default function EmergencyScreen() {
             {/* Delivery Log */}
             {alertPayload && alertPayload.deliveryLog.length > 0 && (
               <View style={dispatchStyles.logSection}>
-                <Text style={dispatchStyles.logTitle}>Delivery Log</Text>
+                <Text style={dispatchStyles.logTitle}>Delivery Tracking System</Text>
                 <ScrollView
                   ref={scrollViewRef}
                   style={dispatchStyles.logScroll}
@@ -762,56 +850,72 @@ export default function EmergencyScreen() {
             )}
 
             {/* Action Buttons */}
-            <View style={[dispatchStyles.buttonsContainer, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={[dispatchStyles.buttonsContainer, { paddingBottom: insets.bottom + 20 }]}>
               {!alertPayload ? (
                 <>
                   <TouchableOpacity
                     style={dispatchStyles.dispatchButton}
                     onPress={confirmAndDispatch}
-                    activeOpacity={0.85}
+                    activeOpacity={0.8}
                   >
-                    {isDispatching ? (
-                      <ActivityIndicator size="small" color={COLORS.white} />
-                    ) : (
-                      <AlertTriangle size={20} color={COLORS.white} />
-                    )}
-                    <Text style={dispatchStyles.dispatchButtonText}>
-                      {isDispatching ? "DISPATCHING..." : "CONFIRM & DISPATCH"}
-                    </Text>
+                    <LinearGradient
+                      colors={["#E62E2E", "#B31A1A"]}
+                      style={dispatchStyles.dispatchButtonGradient}
+                    >
+                      {isDispatching ? (
+                        <ActivityIndicator size="small" color={COLORS.white} />
+                      ) : (
+                        <Radio size={22} color={COLORS.white} />
+                      )}
+                      <Text style={dispatchStyles.dispatchButtonText}>
+                        {isDispatching ? "DISPATCHING ALERT..." : "CONFIRM & DISPATCH"}
+                      </Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={dispatchStyles.cancelDispatchButton}
                     onPress={cancelSOS}
-                    activeOpacity={0.85}
+                    activeOpacity={0.7}
                   >
-                    <Text style={dispatchStyles.cancelDispatchText}>Cancel</Text>
+                    <X size={18} color={COLORS.textMuted} />
+                    <Text style={dispatchStyles.cancelDispatchText}>Cancel Action</Text>
                   </TouchableOpacity>
                 </>
               ) : alertPayload.status === "RESOLVED" ? (
                 <TouchableOpacity
-                  style={[dispatchStyles.dispatchButton, { backgroundColor: COLORS.success }]}
+                  style={[dispatchStyles.dispatchButton, { marginTop: 'auto' }]}
                   onPress={cancelSOS}
-                  activeOpacity={0.85}
+                  activeOpacity={0.8}
                 >
-                  <CheckCircle size={20} color={COLORS.white} />
-                  <Text style={dispatchStyles.dispatchButtonText}>Done — You&apos;re Safe</Text>
+                  <LinearGradient
+                    colors={["#10B981", "#059669"]}
+                    style={dispatchStyles.dispatchButtonGradient}
+                  >
+                    <CheckCircle size={22} color={COLORS.white} />
+                    <Text style={dispatchStyles.dispatchButtonText}>Done — You're Safe</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               ) : (
                 <>
                   <TouchableOpacity
-                    style={[dispatchStyles.dispatchButton, { backgroundColor: COLORS.success }]}
+                    style={[dispatchStyles.dispatchButton, { marginTop: 'auto' }]}
                     onPress={resolveSOS}
-                    activeOpacity={0.85}
+                    activeOpacity={0.8}
                   >
-                    <CheckCircle size={20} color={COLORS.white} />
-                    <Text style={dispatchStyles.dispatchButtonText}>I'm Safe — Resolve</Text>
+                    <LinearGradient
+                      colors={["#10B981", "#059669"]}
+                      style={dispatchStyles.dispatchButtonGradient}
+                    >
+                      <CheckCircle size={22} color={COLORS.white} />
+                      <Text style={dispatchStyles.dispatchButtonText}>I'm Safe — Resolve</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={dispatchStyles.cancelDispatchButton}
                     onPress={cancelSOS}
-                    activeOpacity={0.85}
+                    activeOpacity={0.7}
                   >
-                    <Text style={dispatchStyles.cancelDispatchText}>Dismiss</Text>
+                    <Text style={dispatchStyles.cancelDispatchText}>Dismiss Panel</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -870,6 +974,15 @@ const dispatchStyles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
+    backgroundColor: "#F5F1EE",
+  },
+  topHandle: {
+    width: 48,
+    height: 4,
+    backgroundColor: "rgba(33, 16, 11, 0.15)",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
   },
   header: {
     flexDirection: "row",
@@ -880,160 +993,186 @@ const dispatchStyles = StyleSheet.create({
   },
   headerDecoCircle: {
     position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "rgba(255, 54, 54, 0.05)",
-    top: -100,
-    right: -80,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: "rgba(217, 54, 54, 0.03)",
+    top: -120,
+    right: -100,
   },
   shieldContainer: {
     shadowColor: COLORS.error,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
   },
   shieldBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 54, 54, 0.1)",
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: "rgba(217, 54, 54, 0.06)",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
+    borderColor: "rgba(217, 54, 54, 0.2)",
   },
   headerTextContainer: {
     flex: 1,
     justifyContent: "center",
+    gap: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "900",
-    color: COLORS.white,
+    color: COLORS.text,
     letterSpacing: 1.5,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textMuted,
     fontWeight: "600",
-    marginTop: 2,
   },
   headerRight: {
     justifyContent: "center",
   },
   alertCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    padding: 20,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(33, 16, 11, 0.08)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
   },
   alertRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   alertLabel: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     minWidth: 110,
   },
   alertLabelText: {
     fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.textMuted,
-    letterSpacing: 1,
+    fontWeight: "800",
+    color: COLORS.error,
+    letterSpacing: 1.5,
   },
   alertValue: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.text,
     flex: 1,
     textAlign: "right",
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(33, 16, 11, 0.04)",
     marginVertical: 4,
   },
   preDispatch: {
     alignItems: "center",
-    paddingVertical: 20,
-    gap: 12,
+    paddingVertical: 24,
+    gap: 16,
+  },
+  preDispatchIconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(217, 54, 54, 0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(217, 54, 54, 0.15)",
+    marginBottom: 8,
   },
   preDispatchTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "900",
-    color: COLORS.white,
+    color: COLORS.text,
     letterSpacing: -0.5,
   },
   preDispatchSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.textMuted,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 22,
     fontWeight: "500",
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   },
   logSection: {
-    marginTop: 20,
+    marginTop: 24,
     flex: 1,
   },
   logTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
     color: COLORS.textMuted,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 12,
+    paddingLeft: 4,
   },
   logScroll: {
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(33, 16, 11, 0.02)",
     borderRadius: 16,
-    padding: 12,
-    maxHeight: 200,
+    padding: 16,
+    maxHeight: 250,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(33, 16, 11, 0.06)",
   },
   buttonsContainer: {
-    paddingTop: 20,
-    gap: 12,
+    paddingTop: 24,
+    gap: 14,
+    marginTop: "auto",
   },
   dispatchButton: {
+    shadowColor: "#E62E2E",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  dispatchButtonGradient: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.error,
-    paddingVertical: 18,
+    paddingVertical: 20,
     borderRadius: 50,
     gap: 12,
-    shadowColor: COLORS.error,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
   },
   dispatchButtonText: {
     fontSize: 16,
     fontWeight: "900",
-    color: COLORS.white,
-    letterSpacing: 1,
+    color: "#FFFFFF",
+    letterSpacing: 1.5,
   },
   cancelDispatchButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(33, 16, 11, 0.04)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(33, 16, 11, 0.08)",
+    gap: 8,
   },
   cancelDispatchText: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.textMuted,
+    color: COLORS.secondary,
   },
 });
 
