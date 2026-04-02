@@ -41,15 +41,61 @@ interface LiveUsersCountEvent {
   };
 }
 
-type IncomingMessage = UserLocationEvent | UserActivityEvent | LiveUsersCountEvent | { type: "CHAT_RESPONSE"; payload: { answer: string; conversationId?: string } } | { type: "CHAT_ERROR"; payload: { message: string; conversationId?: string } } | { type: string; [key: string]: any };
+interface SOSDispatchPayload {
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  contacts: { name: string; phone: string; relationship: string }[];
+  userName: string;
+}
+
+interface SOSConfirmationEvent {
+  type: "SOS_CONFIRMED";
+  payload: {
+    alertId: string;
+    status: string;
+    message: string;
+    timestamp: string;
+  };
+}
+
+interface SOSAlertEvent {
+  type: "SOS_ALERT";
+  payload: {
+    alertId: string;
+    userId: string;
+    userName: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    contacts: { name: string; phone: string; relationship: string }[];
+    status: string;
+    timestamp: string;
+  };
+}
+
+interface SOSStatusUpdateEvent {
+  type: "SOS_STATUS_UPDATE";
+  payload: {
+    alertId: string;
+    userId: string;
+    status: string;
+    timestamp: string;
+  };
+}
+
+type IncomingMessage = UserLocationEvent | UserActivityEvent | LiveUsersCountEvent | SOSConfirmationEvent | SOSAlertEvent | SOSStatusUpdateEvent | { type: "CHAT_RESPONSE"; payload: { answer: string; conversationId?: string } } | { type: "CHAT_ERROR"; payload: { message: string; conversationId?: string } } | { type: string; [key: string]: any };
 
 interface SocketContextType {
   socket: WebSocket | null;
   isConnected: boolean;
   sendLocation: (location: LocationPayload) => void;
+  sendSOS: (payload: SOSDispatchPayload) => void;
+  resolveSOSBackend: (alertId: string) => void;
   onUserLocation: (callback: (data: UserLocationEvent) => void) => () => void;
   onUserActivity: (callback: (data: UserActivityEvent) => void) => () => void;
   onLiveUsersCount: (callback: (data: LiveUsersCountEvent) => void) => () => void;
+  onSOSAlert: (callback: (data: SOSAlertEvent | SOSStatusUpdateEvent | SOSConfirmationEvent) => void) => () => void;
   sendChatAsk: (question: string, conversationId?: string) => void;
   onChatMessage: (callback: (data: any) => void) => () => void;
 }
@@ -60,9 +106,12 @@ const SocketContext = createContext<SocketContextType>({
   socket: null,
   isConnected: false,
   sendLocation: () => {},
+  sendSOS: () => {},
+  resolveSOSBackend: () => {},
   onUserLocation: () => () => {},
   onUserActivity: () => () => {},
   onLiveUsersCount: () => () => {},
+  onSOSAlert: () => () => {},
   sendChatAsk: () => {},
   onChatMessage: () => () => {},
 });
@@ -84,6 +133,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const userActivityListeners = useRef<Set<(data: UserActivityEvent) => void>>(new Set());
   const liveUsersCountListeners = useRef<Set<(data: LiveUsersCountEvent) => void>>(new Set());
   const chatListeners = useRef<Set<(data: any) => void>>(new Set());
+  const sosListeners = useRef<Set<(data: SOSAlertEvent | SOSStatusUpdateEvent | SOSConfirmationEvent) => void>>(new Set());
 
   // ─── CONNECT ──────────────────────────────────────────
 
@@ -140,6 +190,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           } else if (data.type === "CHAT_RESPONSE" || data.type === "CHAT_ERROR") {
             for (const listener of chatListeners.current) {
               listener(data);
+            }
+          } else if (data.type === "SOS_CONFIRMED" || data.type === "SOS_ALERT" || data.type === "SOS_STATUS_UPDATE") {
+            for (const listener of sosListeners.current) {
+              listener(data as SOSAlertEvent | SOSStatusUpdateEvent | SOSConfirmationEvent);
             }
           }
         } catch (err) {
@@ -216,6 +270,45 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     ws.send(message);
   }, []);
 
+  // ─── SEND SOS (for USER role) ──────────────────────────
+
+  const sendSOS = useCallback((payload: SOSDispatchPayload) => {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("[WebSocket] Cannot send EMERGENCY_SOS. Not connected.");
+      return;
+    }
+
+    const message = JSON.stringify({
+      type: "EMERGENCY_SOS",
+      payload: {
+        ...payload,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    ws.send(message);
+    console.log("[WebSocket] EMERGENCY_SOS dispatched to backend");
+  }, []);
+
+  // ─── RESOLVE SOS (for USER role) ───────────────────────
+
+  const resolveSOSBackend = useCallback((alertId: string) => {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("[WebSocket] Cannot send SOS_RESOLVE. Not connected.");
+      return;
+    }
+
+    const message = JSON.stringify({
+      type: "SOS_RESOLVE",
+      payload: { alertId },
+    });
+
+    ws.send(message);
+    console.log(`[WebSocket] SOS_RESOLVE sent for alert ${alertId}`);
+  }, []);
+
   // ─── SUBSCRIBE TO USER_LOCATION (for ADMIN role) ──────
 
   const onUserLocation = useCallback((callback: (data: UserLocationEvent) => void) => {
@@ -248,6 +341,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // ─── SUBSCRIBE TO SOS EVENTS ──────────────────────────
+
+  const onSOSAlert = useCallback((callback: (data: SOSAlertEvent | SOSStatusUpdateEvent | SOSConfirmationEvent) => void) => {
+    sosListeners.current.add(callback);
+    return () => {
+      sosListeners.current.delete(callback);
+    };
+  }, []);
+
   // ─── LIFECYCLE ────────────────────────────────────────
 
   useEffect(() => {
@@ -264,7 +366,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [connectWebSocket]);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected, sendLocation, onUserLocation, onUserActivity, onLiveUsersCount, sendChatAsk, onChatMessage }}>
+    <SocketContext.Provider value={{ socket, isConnected, sendLocation, sendSOS, resolveSOSBackend, onUserLocation, onUserActivity, onLiveUsersCount, onSOSAlert, sendChatAsk, onChatMessage }}>
       {children}
     </SocketContext.Provider>
   );
