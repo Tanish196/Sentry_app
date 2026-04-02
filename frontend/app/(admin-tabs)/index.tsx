@@ -48,26 +48,7 @@ const COLORS = {
   border: "#EDE7E3",
 };
 
-const STATS = [
-  {
-    id: "1",
-    title: "Total Users",
-    value: "2,847",
-    icon: Users,
-    color: "#21100B",
-    trend: "+12%",
-  },
-  {
-    id: "2",
-    title: "Active Tours",
-    value: "156",
-    icon: Navigation,
-    color: "#10B981",
-    trend: "+8%",
-  },
-];
-
-
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 const INITIAL_ACTIVITIES = [
   {
@@ -106,11 +87,37 @@ const INITIAL_ACTIVITIES = [
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const { onUserActivity } = useSocket();
+  const { onUserActivity, onLiveUsersCount } = useSocket();
   const insets = useSafeAreaInsets();
   const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [liveUsers, setLiveUsers] = useState<number>(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Fetch initial stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/stats`);
+        const data = await response.json();
+        if (data.totalUsers !== undefined) {
+          setTotalUsers(data.totalUsers);
+        }
+      } catch (error) {
+        console.error("Failed to fetch initial stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Real-time Live Users Tracking
+  useEffect(() => {
+    const unsubscribe = onLiveUsersCount((event) => {
+      setLiveUsers(event.payload.count);
+    });
+    return unsubscribe;
+  }, [onLiveUsersCount]);
 
   // Real-time Activity Tracking
   useEffect(() => {
@@ -129,6 +136,25 @@ export default function AdminDashboard() {
 
     return unsubscribe;
   }, [onUserActivity]);
+
+  const dynamicStats = [
+    {
+      id: "1",
+      title: "Total Users",
+      value: totalUsers.toLocaleString(),
+      icon: Users,
+      color: "#21100B",
+      trend: "All Time",
+    },
+    {
+      id: "2",
+      title: "Live Users",
+      value: liveUsers.toString(),
+      icon: Navigation,
+      color: "#10B981",
+      trend: "Now",
+    },
+  ];
 
   useEffect(() => {
     if (!user) {
@@ -204,7 +230,7 @@ export default function AdminDashboard() {
 
           <Text style={styles.headerTitle}>Welcome back, Admin!</Text>
           <Text style={styles.headerSubtitle}>
-            Here's what's happening with your platform today
+            ....
           </Text>
         </LinearGradient>
 
@@ -220,7 +246,7 @@ export default function AdminDashboard() {
           {/* Stats Grid */}
           <View style={styles.section}>
             <View style={styles.statsGrid}>
-              {STATS.map((stat) => (
+              {dynamicStats.map((stat) => (
                 <Card key={stat.id} style={styles.statCard}>
                   <Card.Content style={styles.statContent}>
                     <TouchableOpacity
@@ -243,18 +269,14 @@ export default function AdminDashboard() {
                       <Text style={styles.statValue}>{stat.value}</Text>
                       <Text style={styles.statTitle}>{stat.title}</Text>
                       <View style={styles.trendContainer}>
-                        {stat.trend.startsWith("+") ? (
-                          <TrendingUp size={14} color={COLORS.success} />
-                        ) : (
-                          <TrendingDown size={14} color={COLORS.error} />
-                        )}
+                        <TrendingUp size={14} color={stat.id === "2" ? COLORS.success : COLORS.secondary} />
                         <Text
                           style={[
                             styles.trendText,
                             {
-                              color: stat.trend.startsWith("+")
+                              color: stat.id === "2"
                                 ? COLORS.success
-                                : COLORS.error,
+                                : COLORS.secondary,
                             },
                           ]}
                         >

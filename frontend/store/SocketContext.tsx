@@ -33,7 +33,14 @@ interface UserActivityEvent {
   };
 }
 
-type IncomingMessage = UserLocationEvent | UserActivityEvent | { type: "CHAT_RESPONSE"; payload: { answer: string; conversationId?: string } } | { type: "CHAT_ERROR"; payload: { message: string; conversationId?: string } } | { type: string; [key: string]: any };
+interface LiveUsersCountEvent {
+  type: "LIVE_USERS_COUNT";
+  payload: {
+    count: number;
+  };
+}
+
+type IncomingMessage = UserLocationEvent | UserActivityEvent | LiveUsersCountEvent | { type: "CHAT_RESPONSE"; payload: { answer: string; conversationId?: string } } | { type: "CHAT_ERROR"; payload: { message: string; conversationId?: string } } | { type: string; [key: string]: any };
 
 interface SocketContextType {
   socket: WebSocket | null;
@@ -41,6 +48,7 @@ interface SocketContextType {
   sendLocation: (location: LocationPayload) => void;
   onUserLocation: (callback: (data: UserLocationEvent) => void) => () => void;
   onUserActivity: (callback: (data: UserActivityEvent) => void) => () => void;
+  onLiveUsersCount: (callback: (data: LiveUsersCountEvent) => void) => () => void;
   sendChatAsk: (question: string, conversationId?: string) => void;
   onChatMessage: (callback: (data: any) => void) => () => void;
 }
@@ -53,6 +61,7 @@ const SocketContext = createContext<SocketContextType>({
   sendLocation: () => {},
   onUserLocation: () => () => {},
   onUserActivity: () => () => {},
+  onLiveUsersCount: () => () => {},
   sendChatAsk: () => {},
   onChatMessage: () => () => {},
 });
@@ -72,6 +81,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Store admin callbacks for USER_LOCATION events
   const userLocationListeners = useRef<Set<(data: UserLocationEvent) => void>>(new Set());
   const userActivityListeners = useRef<Set<(data: UserActivityEvent) => void>>(new Set());
+  const liveUsersCountListeners = useRef<Set<(data: LiveUsersCountEvent) => void>>(new Set());
   const chatListeners = useRef<Set<(data: any) => void>>(new Set());
 
   // ─── CONNECT ──────────────────────────────────────────
@@ -122,6 +132,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             for (const listener of userActivityListeners.current) {
               listener(data as UserActivityEvent);
             }
+          } else if (data.type === "LIVE_USERS_COUNT") {
+             for (const listener of liveUsersCountListeners.current) {
+                listener(data as LiveUsersCountEvent);
+             }
           } else if (data.type === "CHAT_RESPONSE" || data.type === "CHAT_ERROR") {
             for (const listener of chatListeners.current) {
               listener(data);
@@ -217,6 +231,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const onLiveUsersCount = useCallback((callback: (data: LiveUsersCountEvent) => void) => {
+    liveUsersCountListeners.current.add(callback);
+    return () => {
+       liveUsersCountListeners.current.delete(callback);
+    };
+  }, []);
+
   // ─── SUBSCRIBE TO CHAT MESSAGES ───────────────────────
 
   const onChatMessage = useCallback((callback: (data: any) => void) => {
@@ -242,7 +263,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [connectWebSocket]);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected, sendLocation, onUserLocation, onUserActivity, sendChatAsk, onChatMessage }}>
+    <SocketContext.Provider value={{ socket, isConnected, sendLocation, onUserLocation, onUserActivity, onLiveUsersCount, sendChatAsk, onChatMessage }}>
       {children}
     </SocketContext.Provider>
   );
