@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import { useSocket } from "../../store/SocketContext";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, {
     useCallback,
@@ -24,15 +25,13 @@ import MapView, {
     Region,
 } from "react-native-maps";
 import { ActivityIndicator, FAB, Icon, Text } from "react-native-paper";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Map Components
 import {
-    ClusterMarker,
     DirectionsPanel,
     MapFilterBar,
-    POIMarker,
-    RiskZonePolygon,
     SearchOverlay,
     UserLocationMarker,
 } from "../../components/map";
@@ -41,19 +40,11 @@ import {
 import {
     COLORS,
     DELHI_REGION,
-    POI_MARKERS,
-    POIMarker as POIMarkerType,
-    RISK_ZONES,
-    RiskZone,
 } from "../../constants/mapData";
 
 // Location Services
 import {
-    Cluster,
-    clusterMarkers,
     formatDistance,
-    getCurrentRiskZone,
-    isCluster,
     LocationCoordinate,
 } from "../../services/maps/locationService";
 
@@ -77,6 +68,8 @@ import {
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function MapScreen() {
+  const insets = useSafeAreaInsets();
+  const { sendLocation } = useSocket();
   // Get route params (from QuickActions)
   const params = useLocalSearchParams<{ filter?: string }>();
 
@@ -103,7 +96,7 @@ export default function MapScreen() {
 
   // ── Filters ──
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [showRiskZones, setShowRiskZones] = useState(true);
+  const [showRiskZones, setShowRiskZones] = useState(false);
 
   // ── Directions ──
   const [selectedPlace, setSelectedPlace] = useState<SearchResult | null>(null);
@@ -118,8 +111,7 @@ export default function MapScreen() {
   const [navigationState, setNavigationState] = useState<NavigationState | null>(null);
   const navigationManagerRef = useRef<NavigationManager | null>(null);
 
-  // ── Risk zone ──
-  const [currentRiskZone, setCurrentRiskZone] = useState<RiskZone | null>(null);
+  // ── Panic state ──
   const [isPanic, setIsPanic] = useState(false);
 
   // ── UI state ──
@@ -191,8 +183,7 @@ export default function MapScreen() {
         }
       } catch {}
 
-      // Check risk zone
-      setCurrentRiskZone(getCurrentRiskZone(initial));
+
 
       // ── Continuous watch (high accuracy, small intervals) ──
       sub = await Location.watchPositionAsync(
@@ -210,6 +201,16 @@ export default function MapScreen() {
           setHeading(update.coords.heading);
           setAccuracy(update.coords.accuracy);
           setSpeed(update.coords.speed);
+
+          // ── Send location to WebSocket backend ──
+          sendLocation({
+            latitude: update.coords.latitude,
+            longitude: update.coords.longitude,
+            accuracy: update.coords.accuracy,
+            speed: update.coords.speed,
+            heading: update.coords.heading,
+            source: "GPS",
+          });
 
           // Append to breadcrumb trail
           setLocationHistory((prev) => {
@@ -231,7 +232,7 @@ export default function MapScreen() {
 
             // Handle rerouting if needed
             if (navState.shouldReroute && selectedPlace) {
-              console.log('🔄 User off route, rerouting...');
+              console.log('User off route, rerouting...');
               // Trigger reroute
               getDirections(coord, selectedPlace.coordinate, travelMode)
                 .then((newRoute) => {
@@ -260,16 +261,6 @@ export default function MapScreen() {
             return follow;
           });
 
-          // Risk zone check
-          const rz = getCurrentRiskZone(coord);
-          setCurrentRiskZone((prev) => {
-            if (rz && rz.level === "high" && prev?.level !== "high") {
-              Alert.alert("⚠️ High Risk Area", rz.description, [
-                { text: "I Understand" },
-              ]);
-            }
-            return rz;
-          });
         },
       );
 
@@ -285,72 +276,81 @@ export default function MapScreen() {
     };
   }, []);
 
+  const lastSearchLocation = useRef<{
+    latitude: number;
+    longitude: number;
+    filter: string;
+  } | null>(null);
+
   // ===================================================================
-  // 1B. FETCH NEARBY PLACES - ONLY when coming from QuickActions button
+  // 1B. FETCH NEARBY PLACES - Dynamic API Call with Throttling
   // ===================================================================
-  useFocusEffect(
-    useCallback(() => {
-      // Only search if we have a filter param from QuickActions
-      if (!userLocation || !params.filter) return;
+  useEffect(() => {
+    // Check if coming from QuickActions and set initial filter once
+    if (params.filter && selectedFilter === "all") {
+      setSelectedFilter(params.filter as string);
+    }
+  }, [params.filter]);
 
-      const filter = params.filter; // Type narrowing
-      let cancelled = false;
-      const fetchNearby = async () => {
-        setLoadingNearby(true);
-        try {
-          console.log(`🎯 QuickAction triggered search for: ${filter}`);
+  useEffect(() => {
+    if (!userLocation) return;
+    
+    // THROTTLE: Only search if moved > 500m or if filter changed
+    if (lastSearchLocation.current) {
+      const dx = (userLocation.latitude - lastSearchLocation.current.latitude) * 111000;
+      const dy = (userLocation.longitude - lastSearchLocation.current.longitude) * 111000;
+      const distanceMoved = Math.sqrt(dx*dx + dy*dy);
+      
+      // If we haven't moved far enough and the filter hasn't changed, don't search
+      // Note: selectedFilter change will still trigger this useEffect
+      if (distanceMoved < 500 && lastSearchLocation.current.filter === selectedFilter) {
+        return;
+      }
+    }
 
-          // Map filter to search types
-          const filterTypeMap: Record<string, string[]> = {
-            hospital: ["hospital"],
-            police: ["police"],
-            attraction: ["tourism", "attraction"],
-            all: ["hospital", "police", "tourism", "attraction"],
-          };
+    let cancelled = false;
+    const fetchNearby = async () => {
+      setLoadingNearby(true);
+      try {
+        const filterTypeMap: Record<string, string[]> = {
+          hospital: ["hospital"],
+          police: ["police"],
+          attraction: ["tourism", "attraction"],
+          restaurant: ["restaurant", "fast_food", "cafe"],
+          hotel: ["hotel", "motel", "hostel"],
+          all: ["hospital", "police", "tourism", "restaurant", "hotel"],
+        };
 
-          const searchTypes = filterTypeMap[filter] || [
-            "hospital",
-            "police",
-            "tourism",
-            "attraction",
-          ];
-          const places = await searchNearbyPlaces(
-            userLocation,
-            5000,
-            searchTypes,
-          );
+        const searchTypes = filterTypeMap[selectedFilter] || filterTypeMap["all"];
+        const places = await searchNearbyPlaces(
+          userLocation,
+          2000,
+          searchTypes,
+        );
 
-          if (!cancelled) {
-            // Calculate distances for display
-            const withDistance = places.map((p) => {
-              const dx =
-                (p.coordinate.latitude - userLocation.latitude) * 111_000;
-              const dy =
-                (p.coordinate.longitude - userLocation.longitude) *
-                111_000 *
-                Math.cos((userLocation.latitude * Math.PI) / 180);
-              return { ...p, distanceValue: Math.sqrt(dx * dx + dy * dy) };
-            });
-            setNearbyPlaces(withDistance.slice(0, 3));
-
-            // Apply the filter to the map view
-            setSelectedFilter(filter);
-          }
-        } catch (error) {
-          // Error already logged in searchNearbyPlaces
-          if (!cancelled) setNearbyPlaces([]);
-        } finally {
-          if (!cancelled) setLoadingNearby(false);
+        if (!cancelled) {
+          const withDistance = places.map((p) => {
+            const dx = (p.coordinate.latitude - userLocation.latitude) * 111_000;
+            const dy = (p.coordinate.longitude - userLocation.longitude) * 111_000 * Math.cos((userLocation.latitude * Math.PI) / 180);
+            return { ...p, distanceValue: Math.sqrt(dx * dx + dy * dy) };
+          });
+          
+          withDistance.sort((a, b) => a.distanceValue - b.distanceValue);
+          setNearbyPlaces(withDistance.slice(0, 5));
+          
+          // Store this location as the last searched location
+          lastSearchLocation.current = { ...userLocation, filter: selectedFilter };
         }
-      };
+      } catch (error) {
+        if (!cancelled) setNearbyPlaces([]);
+      } finally {
+        if (!cancelled) setLoadingNearby(false);
+      }
+    };
 
-      fetchNearby();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [userLocation, params.filter]),
-  );
+    fetchNearby();
+    return () => { cancelled = true; };
+  }, [userLocation, selectedFilter]);
 
   // ===================================================================
   // 2. DIRECTIONS – fetch route when destination is selected or initially
@@ -451,22 +451,6 @@ export default function MapScreen() {
     }
   }, [userLocation, isNavigating]);
 
-  // ===================================================================
-  // 4. FILTERS & CLUSTERS
-  // ===================================================================
-  const filteredMarkers = useMemo(() => {
-    if (selectedFilter === "all") return POI_MARKERS;
-    return POI_MARKERS.filter((m) => m.type === selectedFilter);
-  }, [selectedFilter]);
-
-  const clusteredMarkers = useMemo(
-    () =>
-      clusterMarkers(
-        filteredMarkers.map((m) => ({ id: m.id, coordinate: m.coordinate })),
-        zoomLevel,
-      ),
-    [filteredMarkers, zoomLevel],
-  );
 
   // ===================================================================
   // 5. NOTE: nearbyPlaces is now fetched via API in useEffect above
@@ -490,54 +474,12 @@ export default function MapScreen() {
     );
   }, [userLocation]);
 
-  const handlePOIPress = useCallback(
-    (poi: POIMarkerType) => {
-      Alert.alert(
-        poi.name,
-        `Type: ${poi.type}\n${poi.rating ? `Rating: ${poi.rating}⭐` : ""}${poi.phone ? `\nPhone: ${poi.phone}` : ""}`,
-        [
-          { text: "Close" },
-          {
-            text: "Get Directions",
-            onPress: () => {
-              handlePlaceSelected({
-                id: poi.id,
-                name: poi.name,
-                displayName: poi.name,
-                coordinate: poi.coordinate,
-                type: poi.type,
-                category: poi.type,
-                icon: "map-marker",
-              });
-            },
-          },
-        ],
-      );
-    },
-    [handlePlaceSelected],
-  );
-
-  const handleRiskZonePress = useCallback((zone: RiskZone) => {
-    const emoji = { safe: "🟢", moderate: "🟡", high: "🔴" };
-    Alert.alert(`${emoji[zone.level]} ${zone.name}`, zone.description);
-  }, []);
-
-  const handleClusterPress = useCallback(
-    (cluster: Cluster) => {
-      mapRef.current?.animateToRegion({
-        ...cluster.coordinate,
-        latitudeDelta: region.latitudeDelta / 2.5,
-        longitudeDelta: region.longitudeDelta / 2.5,
-      });
-    },
-    [region],
-  );
 
   const togglePanic = useCallback(() => {
     setIsPanic((p) => {
       if (!p) {
         Alert.alert(
-          "🚨 Panic Mode Activated",
+          "Panic Mode Activated",
           "Your location is being shared with emergency contacts.",
         );
       }
@@ -597,7 +539,7 @@ export default function MapScreen() {
     setFollowUser(true); // Auto-follow during navigation
 
     Alert.alert(
-      '🧭 Navigation Started',
+      'Navigation Started',
       `Follow the ${travelMode} directions. You'll receive turn-by-turn guidance.`,
       [{ text: 'OK' }]
     );
@@ -625,17 +567,19 @@ export default function MapScreen() {
   // ===================================================================
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <View style={styles.loadingContainer}>
+        <StatusBar style="dark" translucent backgroundColor="transparent" />
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Finding your location...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const showDirections = !!selectedPlace;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={styles.container}>
+      <StatusBar style="dark" translucent backgroundColor="transparent" />
       <View style={styles.mapContainer}>
         {/* ── MAP ── */}
         <MapView
@@ -661,15 +605,7 @@ export default function MapScreen() {
             left: 0,
           }}
         >
-          {/* Risk Zones */}
-          {showRiskZones &&
-            RISK_ZONES.map((zone) => (
-              <RiskZonePolygon
-                key={zone.id}
-                zone={zone}
-                onPress={handleRiskZonePress}
-              />
-            ))}
+
 
           {/* Direction route polyline */}
           {routeInfo && (
@@ -702,24 +638,7 @@ export default function MapScreen() {
             />
           )}
 
-          {/* POI Markers */}
-          {!showDirections &&
-            clusteredMarkers.map((item) =>
-              isCluster(item) ? (
-                <ClusterMarker
-                  key={item.id}
-                  cluster={item}
-                  onPress={handleClusterPress}
-                />
-              ) : (
-                <POIMarker
-                  key={item.id}
-                  poi={filteredMarkers.find((m) => m.id === item.id)!}
-                  onPress={handlePOIPress}
-                  onCalloutPress={handlePOIPress}
-                />
-              ),
-            )}
+
 
           {/* User's live location marker */}
           {userLocation && (
@@ -735,99 +654,11 @@ export default function MapScreen() {
         {/* ── SEARCH ── */}
         <SearchOverlay onSelectPlace={handlePlaceSelected} />
 
-        {/* ── FILTERS (hide during directions) ── */}
-        {!showDirections && (
-          <View style={styles.filterContainer}>
-            <MapFilterBar
-              selectedFilter={selectedFilter}
-              onFilterChange={setSelectedFilter}
-              showRiskZones={showRiskZones}
-              onToggleRiskZones={() => setShowRiskZones((p) => !p)}
-            />
-          </View>
-        )}
 
-        {/* ── RISK ZONE INDICATOR ── */}
-        {currentRiskZone && !showDirections && (
-          <View
-            style={[
-              styles.riskIndicator,
-              {
-                backgroundColor:
-                  currentRiskZone.level === "high"
-                    ? "#FEE2E2"
-                    : currentRiskZone.level === "moderate"
-                      ? "#FEF3C7"
-                      : "#D1FAE5",
-                borderColor:
-                  currentRiskZone.level === "high"
-                    ? "#EF4444"
-                    : currentRiskZone.level === "moderate"
-                      ? "#F59E0B"
-                      : "#10B981",
-              },
-            ]}
-          >
-            <Icon
-              source={
-                currentRiskZone.level === "high"
-                  ? "alert-circle"
-                  : currentRiskZone.level === "moderate"
-                    ? "alert"
-                    : "shield-check"
-              }
-              size={16}
-              color={
-                currentRiskZone.level === "high"
-                  ? "#EF4444"
-                  : currentRiskZone.level === "moderate"
-                    ? "#F59E0B"
-                    : "#10B981"
-              }
-            />
-            <Text
-              style={[
-                styles.riskIndicatorText,
-                {
-                  color:
-                    currentRiskZone.level === "high"
-                      ? "#DC2626"
-                      : currentRiskZone.level === "moderate"
-                        ? "#D97706"
-                        : "#059669",
-                },
-              ]}
-            >
-              {currentRiskZone.level === "high"
-                ? "High Risk Area"
-                : currentRiskZone.level === "moderate"
-                  ? "Stay Alert"
-                  : "Safe Zone"}
-            </Text>
-          </View>
-        )}
 
-        {/* ── SPEED + LOCATION CARD ── */}
-        {!showDirections && (
-          <View style={styles.locationCard}>
-            <View style={styles.locationInfo}>
-              <Icon source="crosshairs-gps" size={22} color={COLORS.primary} />
-              <View style={styles.locationText}>
-                <Text style={styles.locationTitle}>Current Location</Text>
-                <Text style={styles.locationSubtitle} numberOfLines={1}>
-                  {currentAddress}
-                </Text>
-              </View>
-            </View>
-            {speed !== null && speed > 0 && (
-              <View style={styles.speedBadge}>
-                <Text style={styles.speedText}>
-                  {Math.round(speed * 3.6)} km/h
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
+
+
+
 
         {/* ── FABs ── */}
         <View style={[styles.fabContainer, showDirections && { bottom: 400 }]}>
@@ -855,7 +686,7 @@ export default function MapScreen() {
 
         {/* ── LOADING ROUTE OVERLAY ── */}
         {loadingRoute && (
-          <View style={styles.routeLoadingOverlay}>
+          <View style={[styles.routeLoadingOverlay, { top: insets.top + 76 }]}>
             <ActivityIndicator size="small" color="#fff" />
             <Text style={styles.routeLoadingText}>Finding route...</Text>
           </View>
@@ -878,7 +709,7 @@ export default function MapScreen() {
         {/* ── STOP NAVIGATION BUTTON (when navigating) ── */}
         {isNavigating && (
           <TouchableOpacity
-            style={styles.stopNavButton}
+            style={[styles.stopNavButton, { top: insets.top + 76 }]}
             onPress={handleStopNavigation}
             activeOpacity={0.8}
           >
@@ -982,25 +813,24 @@ export default function MapScreen() {
           </Animated.View>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: "#F5F1EE" },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.background,
+    backgroundColor: "#F5F1EE",
   },
-  loadingText: { marginTop: 16, fontSize: 16, color: COLORS.textLight },
+  loadingText: { marginTop: 16, fontSize: 16, color: "#4A4341" },
   mapContainer: { flex: 1 },
   map: { flex: 1 },
 
   filterContainer: {
     position: "absolute",
-    top: 70,
     left: 0,
     right: 0,
     zIndex: 15,
@@ -1008,7 +838,6 @@ const styles = StyleSheet.create({
 
   riskIndicator: {
     position: "absolute",
-    top: 130,
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
@@ -1026,7 +855,7 @@ const styles = StyleSheet.create({
     bottom: 220,
     left: 16,
     right: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 14,
     flexDirection: "row",
@@ -1037,18 +866,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(33, 16, 11, 0.08)",
   },
   locationInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
   locationText: { marginLeft: 12, flex: 1 },
-  locationTitle: { fontSize: 14, fontWeight: "600", color: COLORS.text },
-  locationSubtitle: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  locationTitle: { fontSize: 14, fontWeight: "600", color: "#1A1818" },
+  locationSubtitle: { fontSize: 12, color: "#4A4341", marginTop: 2 },
   speedBadge: {
     backgroundColor: "#10B981",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
   },
-  speedText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+  speedText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
 
   fabContainer: {
     position: "absolute",
@@ -1056,13 +887,12 @@ const styles = StyleSheet.create({
     bottom: 240,
     gap: 12,
   },
-  fab: { backgroundColor: "#fff", elevation: 4 },
-  fabPanic: { backgroundColor: "#EF4444" },
-  fabFollow: { backgroundColor: "#10B981" },
+  fab: { backgroundColor: "#FFFFFF", elevation: 4 },
+  fabPanic: { backgroundColor: "#D93636" },
+  fabFollow: { backgroundColor: "#21100B" },
 
   routeLoadingOverlay: {
     position: "absolute",
-    top: 76,
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
@@ -1080,7 +910,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -1089,6 +919,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(33, 16, 11, 0.08)",
   },
   nearbyHeader: {
     flexDirection: "row",
@@ -1096,11 +928,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  nearbyTitle: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+  nearbyTitle: { fontSize: 16, fontWeight: "700", color: "#1A1818" },
   trackingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#D1FAE5",
+    backgroundColor: "rgba(33, 16, 11, 0.05)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1110,9 +942,9 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#10B981",
+    backgroundColor: "#21100B",
   },
-  trackingText: { fontSize: 11, fontWeight: "600", color: "#059669" },
+  trackingText: { fontSize: 11, fontWeight: "600", color: "#21100B" },
   nearbyItems: { gap: 10 },
   nearbyItem: {
     flexDirection: "row",
@@ -1129,8 +961,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nearbyInfo: { flex: 1, marginLeft: 12 },
-  nearbyName: { fontSize: 14, fontWeight: "600", color: COLORS.text },
-  nearbyDistance: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  nearbyName: { fontSize: 14, fontWeight: "600", color: "#1A1818" },
+  nearbyDistance: { fontSize: 12, color: "#4A4341", marginTop: 2 },
   nearbyLoading: {
     flexDirection: "row",
     alignItems: "center",
@@ -1148,17 +980,16 @@ const styles = StyleSheet.create({
   
   stopNavButton: {
     position: "absolute",
-    top: 76,
     right: 16,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EF4444",
+    backgroundColor: "#21100B",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     gap: 8,
     elevation: 8,
-    shadowColor: "#EF4444",
+    shadowColor: "#21100B",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

@@ -2,15 +2,21 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { prisma } from "../prisma.js";
+import { emailService } from "../services/emailService.js";
+import { redis } from "../config/redis.js";
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "123123";
-/**
- * SIGNUP
- */
 router.post("/signup", async (req, res) => {
     try {
-        const { name, email, phone, password, } = req.body;
+        const { name, email, phone, password, role, } = req.body;
+        console.log("[AUTH][SIGNUP] Request received", {
+            email,
+            hasName: Boolean(name),
+            hasPhone: Boolean(phone),
+            requestedRole: role,
+        });
         if (!email || !password) {
+            console.warn("[AUTH][SIGNUP] Missing required fields", { emailPresent: Boolean(email) });
             return res
                 .status(400)
                 .json({ message: "Email and password are required" });
@@ -19,17 +25,26 @@ router.post("/signup", async (req, res) => {
             where: { email },
         });
         if (existingUser) {
+            console.warn("[AUTH][SIGNUP] Existing user attempted signup", { email });
             return res.status(400).json({ message: "User already exists" });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
+        // Determine role from request, defaulting safely to USER
+        const allowedRoles = ["USER", "ADMIN"];
+        const requestedRole = allowedRoles.includes(role) ? role : "USER";
         const newUser = await prisma.user.create({
             data: {
                 name: name || "",
                 email,
                 phone: phone || "",
                 password: hashedPassword,
-                role: "USER",
+                role: requestedRole,
             },
+        });
+        console.log("[AUTH][SIGNUP] User created", {
+            userId: newUser.id,
+            email: newUser.email,
+            role: newUser.role,
         });
         const token = jwt.sign({
             userId: newUser.id,
@@ -47,7 +62,7 @@ router.post("/signup", async (req, res) => {
         });
     }
     catch (error) {
-        console.error(error);
+        console.error("[AUTH][SIGNUP] Unexpected error", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 });
@@ -57,22 +72,27 @@ router.post("/signup", async (req, res) => {
 router.post("/signin", async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log("[AUTH][SIGNIN] Request received", { email });
         if (!email || !password) {
+            console.warn("[AUTH][SIGNIN] Missing required fields", { emailPresent: Boolean(email) });
             return res.status(400).json({ message: "Email and password are required" });
         }
         const user = await prisma.user.findUnique({
             where: { email },
         });
         if (!user) {
+            console.warn("[AUTH][SIGNIN] User not found", { email });
             return res.status(404).json({ message: "User not found" });
         }
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
+            console.warn("[AUTH][SIGNIN] Invalid password", { email, userId: user.id });
             return res.status(401).json({ message: "Invalid password" });
         }
+        console.log("[AUTH][SIGNIN] Password verified", { email, userId: user.id });
         const token = jwt.sign({
             userId: user.id,
-            role: user.role, // ✅ role in JWT
+            role: user.role, //  role in JWT
         }, JWT_SECRET, { expiresIn: "6h" });
         return res.status(200).json({
             message: "Signin successful",
@@ -86,7 +106,101 @@ router.post("/signin", async (req, res) => {
         });
     }
     catch (error) {
-        console.error(error);
+        console.error("[AUTH][SIGNIN] Unexpected error", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+/**
+ * Route A: POST /forgot-password
+ */
+router.post("/forgot-password", async (req, res) => {
+    try {
+        const { email } = req.body;
+        console.log("[AUTH][FORGOT_PASSWORD] Request received", { email });
+        if (!email)
+            return res.status(400).json({ message: "Email is required" });
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            console.warn("[AUTH][FORGOT_PASSWORD] User not found", { email });
+            return res.status(404).json({ message: "User not found" });
+        }
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        // Store the code in Redis with a 5-minute expiration (300 seconds)
+        await redis.setex(`reset-code:${email}`, 300, code);
+        const emailHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Password Reset</h2>
+        <p>Your password reset code is: <strong>${code}</strong></p>
+        <p>This code will expire in 5 minutes.</p>
+        <p>If you did not request this, please ignore this email.</p>
+      </div>
+    `;
+        await emailService.sendEmail(email, "Password Reset Code", emailHtml);
+        console.log("[AUTH][FORGOT_PASSWORD] Reset code sent", { email, userId: user.id });
+        return res.status(200).json({ success: true, message: "Verification code sent." });
+    }
+    catch (error) {
+        console.error("[AUTH][FORGOT_PASSWORD] Unexpected error", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+/**
+ * Route B: POST /verify-code
+ */
+router.post("/verify-code", async (req, res) => {
+    try {
+        const { email, code } = req.body;
+        console.log("[AUTH][VERIFY_CODE] Request received", { email, hasCode: Boolean(code) });
+        if (!email || !code)
+            return res.status(400).json({ message: "Email and code are required." });
+        const storedCode = await redis.get(`reset-code:${email}`);
+        if (!storedCode) {
+            console.warn("[AUTH][VERIFY_CODE] Code missing or expired", { email });
+            return res.status(400).json({ success: false, message: "Verification code expired or not found." });
+        }
+        if (storedCode !== code) {
+            console.warn("[AUTH][VERIFY_CODE] Invalid code", { email });
+            return res.status(400).json({ success: false, message: "Invalid verification code." });
+        }
+        console.log("[AUTH][VERIFY_CODE] Code verified", { email });
+        return res.status(200).json({ success: true, message: "Code verified." });
+    }
+    catch (error) {
+        console.error("[AUTH][VERIFY_CODE] Unexpected error", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+/**
+ * Route C: POST /reset-password
+ */
+router.post("/reset-password", async (req, res) => {
+    try {
+        const { email, code, newPassword } = req.body;
+        console.log("[AUTH][RESET_PASSWORD] Request received", {
+            email,
+            hasCode: Boolean(code),
+            hasNewPassword: Boolean(newPassword),
+        });
+        if (!email || !code || !newPassword) {
+            return res.status(400).json({ message: "Email, code, and newPassword are required." });
+        }
+        const storedCode = await redis.get(`reset-code:${email}`);
+        if (!storedCode || storedCode !== code) {
+            console.warn("[AUTH][RESET_PASSWORD] Invalid or expired code", { email });
+            return res.status(400).json({ success: false, message: "Invalid or expired verification code." });
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword },
+        });
+        // Delete the code from Redis so it cannot be reused
+        await redis.del(`reset-code:${email}`);
+        console.log("[AUTH][RESET_PASSWORD] Password reset successful", { email });
+        return res.status(200).json({ success: true, message: "Password reset successful." });
+    }
+    catch (error) {
+        console.error("[AUTH][RESET_PASSWORD] Unexpected error", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 });

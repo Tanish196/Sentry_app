@@ -1,17 +1,16 @@
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Animated, ScrollView, StyleSheet, View } from "react-native";
 import { Text } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
-import FeaturedDestinations from "../../components/userHome/FeaturedDestinations";
+
 import QuickActions from "../../components/userHome/QuickActions";
 import SafetyTips from "../../components/userHome/SafetyTips";
 import UserHeader from "../../components/userHome/UserHeader";
 import WeatherWidget from "../../components/userHome/WeatherWidget";
 import {
     COLORS,
-    FEATURED_DESTINATIONS,
     QUICK_ACTIONS,
 } from "../../constants/userHomeData";
 import { useAuth } from "../../store/AuthContext";
@@ -50,24 +49,16 @@ export default function UserHomeScreen() {
     router.replace("/(auth)/user-login");
   };
 
-  // Filter destinations based on search query
-  const filteredDestinations = FEATURED_DESTINATIONS.filter((dest) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      dest.name.toLowerCase().includes(query) ||
-      dest.location.toLowerCase().includes(query) ||
-      dest.category.toLowerCase().includes(query)
-    );
-  });
+
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar
-        style="dark"
-        backgroundColor={COLORS.background}
-        translucent={false}
-      />
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <StatusBar style="dark" translucent backgroundColor="transparent" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         <UserHeader
           user={user}
           searchQuery={searchQuery}
@@ -83,12 +74,10 @@ export default function UserHomeScreen() {
           ]}
         >
           <QuickActions actions={QUICK_ACTIONS} />
-          {filteredDestinations.length > 0 ? (
-            <FeaturedDestinations destinations={filteredDestinations} />
-          ) : searchQuery ? (
+          {searchQuery ? (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noResultsText}>
-                No destinations found for "{searchQuery}"
+                No results found for "{searchQuery}"
               </Text>
             </View>
           ) : null}
@@ -96,17 +85,24 @@ export default function UserHomeScreen() {
           <WeatherWidget />
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   content: {
-    paddingTop: 20,
+    paddingTop: 0,
   },
   noResultsContainer: {
     paddingHorizontal: 20,
@@ -114,8 +110,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   noResultsText: {
-    fontSize: 16,
-    color: COLORS.textLight,
+    fontSize: 15,
+    color: COLORS.textMuted,
     textAlign: "center",
+    fontWeight: "500",
   },
 });
