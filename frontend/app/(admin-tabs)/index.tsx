@@ -315,7 +315,6 @@ export default function AdminDashboard() {
       value: totalUsers.toLocaleString(),
       icon: Users,
       color: "#21100B",
-      trend: "All Time",
     },
     {
       id: "2",
@@ -323,7 +322,6 @@ export default function AdminDashboard() {
       value: liveUsers.toString(),
       icon: Navigation,
       color: "#10B981",
-      trend: "Now",
     },
   ];
 
@@ -435,21 +433,6 @@ export default function AdminDashboard() {
                       </View>
                       <Text style={styles.statValue}>{stat.value}</Text>
                       <Text style={styles.statTitle}>{stat.title}</Text>
-                      <View style={styles.trendContainer}>
-                        <TrendingUp size={14} color={stat.id === "2" ? COLORS.success : COLORS.secondary} />
-                        <Text
-                          style={[
-                            styles.trendText,
-                            {
-                              color: stat.id === "2"
-                                ? COLORS.success
-                                : COLORS.secondary,
-                            },
-                          ]}
-                        >
-                          {stat.trend}
-                        </Text>
-                      </View>
                     </TouchableOpacity>
                   </Card.Content>
                 </Card>
