@@ -28,7 +28,7 @@ interface UserActivityEvent {
   payload: {
     userId: string;
     userName: string;
-    action: "LOGIN" | "LOGOUT";
+    action: "LOGIN" | "LOGOUT" | "SIGNUP";
     timestamp: string;
   };
 }
