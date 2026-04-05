@@ -73,6 +73,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         name: data.user.name,
         phone: data.user.phone,
         avatar: data.user.avatar,
+        address: data.user.address,
         role: frontendRoleObj,
       };
 
@@ -110,6 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         name: data.user.name,
         phone: data.user.phone,
         avatar: data.user.avatar,
+        address: data.user.address,
         role: frontendRoleObj,
       };
 
@@ -176,6 +178,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               name: updatedUser.name,
               phone: updatedUser.phone,
               avatar: updatedUser.avatar,
+              address: updatedUser.address,
             }),
           });
 

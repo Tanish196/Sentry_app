@@ -137,6 +137,8 @@ export default function ProfileScreen() {
   const handleMenuPress = (id: string) => {
     if (id === "personal_info") {
       router.push("/personal-info");
+    } else if (id === "address") {
+      router.push("/address-settings");
     } else {
       console.log("Menu pressed:", id);
     }

@@ -5,6 +5,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   phone?: string;
+  address?: string;
   department?: string;
   permissions?: Permission[];
 }
