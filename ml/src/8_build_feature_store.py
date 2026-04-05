@@ -1,27 +1,39 @@
-import pandas as pd, json, numpy as np
+import pandas as pd
+import json
+import joblib
 
-features   = pd.read_csv("../datasets/features.csv")
-scores     = pd.read_csv("../datasets/all_area_scores.csv")
-metadata   = json.load(open("../models/model_metadata.json"))
+xgb_model = joblib.load('../models/risk_model_xgb_v3.pkl')
+lgb_model = joblib.load('../models/risk_model_lgb_v3.pkl')
 
-FEAT_COLS  = metadata["feature_names"]   # 32 features
-BASE_FEATS = metadata["base_features"]  
+features = pd.read_csv('../processed/features.csv')
+metadata = json.load(open('../models/model_metadata_v3.json'))
 
-df = features.merge(scores[["boundary_POL_STN_NM","base_score","risk_category"]],
-                    on="boundary_POL_STN_NM", how="left")
+feature_cols = metadata['feature_names']
+
+X = features[feature_cols].values
+xgb_pred = xgb_model.predict(X)
+lgb_pred = lgb_model.predict(X)
+
+base_scores = 0.5 * xgb_pred + 0.5 * lgb_pred
 
 records = []
-for _, row in df.iterrows():
+for i, row in features.iterrows():
+    score = base_scores[i]
+    if score < 26.98:
+        category = 'Low'
+    elif score < 39.68:
+        category = 'Medium'
+    else:
+        category = 'High'
+    
     record = {
-        "area_id":       row["boundary_POL_STN_NM"],   # partition key
-        "base_score":    round(float(row["base_score"]), 2) if pd.notna(row["base_score"]) else None,
-        "risk_category": str(row["risk_category"]) if pd.notna(row["risk_category"]) else "Unknown",
-        "features": {
-            col: round(float(row[col]), 4) if pd.notna(row[col]) else 0.0
-            for col in BASE_FEATS if col in df.columns
-        }
+        'area_id': row['boundary_POL_STN_NM'],
+        'base_score': round(float(score), 2), 
+        'risk_category': category
     }
     records.append(record)
 
-with open("../datasets/feature_store.json", "w") as f:
+with open('../processed/feature_store.json', 'w') as f:
     json.dump(records, f, indent=2)
+
+print(f"{len(records)} areas with pre-computed scores")
