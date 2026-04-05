@@ -40,6 +40,52 @@ function isUrlSafe(url: string): boolean {
 }
 
 // ============================================================
+// Fallback Data
+// ============================================================
+const FALLBACK_PARTNERS: BookingPartner[] = [
+  {
+    id: "mmt-fallback-1",
+    name: "MakeMyTrip",
+    description: "Book flights and hotels securely",
+    url: "https://www.makemytrip.com",
+    logoUrl: null,
+    category: "flights",
+    isVerified: true,
+    priority: 100,
+  },
+  {
+    id: "oyo-fallback-2",
+    name: "OYO Rooms",
+    description: "Budget & premium hotels across India",
+    url: "https://www.oyorooms.com",
+    logoUrl: null,
+    category: "hotels",
+    isVerified: true,
+    priority: 90,
+  },
+  {
+    id: "redbus-fallback-3",
+    name: "RedBus",
+    description: "Intercity bus tickets with live tracking",
+    url: "https://www.redbus.in",
+    logoUrl: null,
+    category: "buses",
+    isVerified: true,
+    priority: 80,
+  },
+  {
+    id: "irctc-fallback-4",
+    name: "IRCTC Train Booking",
+    description: "Official Indian Railways ticket booking",
+    url: "https://www.irctc.co.in/nget/train-search",
+    logoUrl: null,
+    category: "trains",
+    isVerified: true,
+    priority: 70,
+  },
+];
+
+// ============================================================
 // Auth helper
 // ============================================================
 async function getAuthToken(): Promise<string | null> {
@@ -67,10 +113,17 @@ export async function fetchBookingPartners(): Promise<BookingPartner[]> {
     const data: PartnersResponse = await response.json();
 
     // Double-check HTTPS on client side (defense-in-depth)
-    return data.partners.filter((p) => isUrlSafe(p.url));
+    const validPartners = data.partners.filter((p) => isUrlSafe(p.url));
+    
+    if (validPartners.length === 0) {
+      console.log("[BookingService] API returned 0 partners. Using fallback data to prevent empty UI.");
+      return FALLBACK_PARTNERS;
+    }
+
+    return validPartners;
   } catch (error) {
     console.error("[BookingService] fetchBookingPartners failed:", error);
-    return [];
+    return FALLBACK_PARTNERS;
   }
 }
 
